@@ -54,7 +54,7 @@ npm install
 npm start
 ```
 
-4. Docker setup (recommended):
+4. Docker setup:
 ```bash
 docker-compose up --build
 ```
@@ -65,14 +65,6 @@ docker-compose up --build
 - **02/13/2026:** Project proposal presentation (20% of grade)
 - **TBD:** Final delivery and technical report
 
-## Git Workflow
-
-1. Create a new branch: `git checkout -b JIRA-123-feature-name`
-2. Make changes and commit: `git commit -m "JIRA-123: Descriptive message"`
-3. Push branch: `git push origin JIRA-123-feature-name`
-4. Create Pull Request with reviewer
-5. Merge after approval
-
 ## Documentation
 
 See `/docs` folder for:
@@ -82,8 +74,6 @@ See `/docs` folder for:
 - API Documentation
 
 ## License
-
-[Add your license here]
 ```
 
 ### Step 3: Create a Proper .gitignore

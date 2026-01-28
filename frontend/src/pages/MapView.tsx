@@ -10,7 +10,7 @@ const MapView: React.FC = () => {
 				<div className="bg-gray-200 h-96 rounded-lg flex items-center justify-center shadow-lg">
 					<div className="text-center">
 						<div className="text-6xl mb-4" role="img" aria-label="Map">🗺️</div>
-						<div className="text-gray-600 text-lg">
+						<div className="text-uncc-green text-lg">
 							Mapbox integration coming soon...
 						</div>
 					</div>

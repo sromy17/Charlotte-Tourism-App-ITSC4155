@@ -10,6 +10,7 @@ const Navbar: React.FC = () => {
 						to="/"
 						className="text-2xl font-bold hover:text-uncc-gold transition duration-200"
 						aria-label="Niner-Navigate Home"
+						style={{ color: '#ff69b4' }}
 					>
 						🏙️ Niner-Navigate
 					</Link>

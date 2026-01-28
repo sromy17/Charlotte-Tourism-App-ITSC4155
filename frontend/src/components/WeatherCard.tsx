@@ -18,7 +18,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({ weather }) => {
 					<h2 className="text-4xl font-bold text-gray-800">
 						{Math.round(weather.temperature)}°F
 					</h2>
-					<div className="text-xl text-gray-600 capitalize mt-2">
+					<div className="text-xl text-uncc-green capitalize mt-2">
 						{weather.description}
 					</div>
 					<div className="text-sm text-gray-500 mt-1">

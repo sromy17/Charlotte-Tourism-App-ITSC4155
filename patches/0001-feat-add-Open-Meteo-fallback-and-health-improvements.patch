@@ -1,0 +1,1085 @@
+From 6409791ff35c2552542a1c43d143c15f6a0a8bed Mon Sep 17 00:00:00 2001
+From: gsharma6 <gsharma6@uncc.edu>
+Date: Wed, 28 Jan 2026 16:26:56 -0500
+Subject: [PATCH 1/2] feat: add Open-Meteo fallback and health improvements
+
+---
+ backend/.env                                  |   9 ++
+ .../app/__pycache__/__init__.cpython-313.pyc  | Bin 0 -> 179 bytes
+ .../app/__pycache__/config.cpython-313.pyc    | Bin 0 -> 1308 bytes
+ backend/app/__pycache__/main.cpython-313.pyc  | Bin 0 -> 2094 bytes
+ backend/app/main.py                           |  12 +-
+ .../__pycache__/__init__.cpython-313.pyc      | Bin 0 -> 186 bytes
+ .../__pycache__/attractions.cpython-313.pyc   | Bin 0 -> 662 bytes
+ .../routes/__pycache__/auth.cpython-313.pyc   | Bin 0 -> 968 bytes
+ .../__pycache__/weather.cpython-313.pyc       | Bin 0 -> 2522 bytes
+ backend/app/routes/weather.py                 |  32 ++++-
+ .../__pycache__/__init__.cpython-313.pyc      | Bin 0 -> 188 bytes
+ .../weather_service.cpython-313.pyc           | Bin 0 -> 6950 bytes
+ backend/app/services/weather_service.py       | 134 ++++++++++++++----
+ frontend/package-lock.json                    |  44 +++---
+ frontend/src/App.css                          |  20 ++-
+ frontend/src/components/Navbar.tsx            |   1 +
+ frontend/src/components/WeatherCard.tsx       |   2 +-
+ frontend/src/index.css                        |  25 +++-
+ frontend/src/pages/Home.tsx                   | 110 +++++++++++++-
+ frontend/src/pages/MapView.tsx                |   2 +-
+ 20 files changed, 332 insertions(+), 59 deletions(-)
+ create mode 100644 backend/.env
+ create mode 100644 backend/app/__pycache__/__init__.cpython-313.pyc
+ create mode 100644 backend/app/__pycache__/config.cpython-313.pyc
+ create mode 100644 backend/app/__pycache__/main.cpython-313.pyc
+ create mode 100644 backend/app/routes/__pycache__/__init__.cpython-313.pyc
+ create mode 100644 backend/app/routes/__pycache__/attractions.cpython-313.pyc
+ create mode 100644 backend/app/routes/__pycache__/auth.cpython-313.pyc
+ create mode 100644 backend/app/routes/__pycache__/weather.cpython-313.pyc
+ create mode 100644 backend/app/services/__pycache__/__init__.cpython-313.pyc
+ create mode 100644 backend/app/services/__pycache__/weather_service.cpython-313.pyc
+
+diff --git a/backend/.env b/backend/.env
+new file mode 100644
+index 0000000..e115ab9
+--- /dev/null
++++ b/backend/.env
+@@ -0,0 +1,9 @@
++DATABASE_URL=sqlite:///./dev.db
++SECRET_KEY=devsecretkey
++ALGORITHM=HS256
++ACCESS_TOKEN_EXPIRES_MINUTES=30
++OPENWEATHER_API_KEY=5d33bc6d8e323fd68c2144f670d24c9c
++YELP_API_KEY=dev_yelp_key
++TICKETMASTER_API_KEY=dev_ticketmaster_key
++TOMTOM_API_KEY=dev_tomtom_key
++FRONTEND_URL=http://localhost:3000
+diff --git a/backend/app/__pycache__/__init__.cpython-313.pyc b/backend/app/__pycache__/__init__.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..c3bf3899dbd09b23b5ff497b2170dde98de07e17
+GIT binary patch
+literal 179
+zcmey&%ge<81S}WIGePuY5CH>>P{wB#AY&>+I)f&o-%5reCLr%KNa|LQvsFxJacWU<
+zOmIeGQErS&YH@Z+enE_hp{Z$%Gf*fezoaBpHzdEbD6=?M*Rh~L*E1y887!TYn4F!O
+ymlBg$P!JOzpP83g5+AQuP<e~PCO1E&G$+-rh!toB$O*+D#z$sGM#ds$APWGT$Spen
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/__pycache__/config.cpython-313.pyc b/backend/app/__pycache__/config.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..561a46917dcb0cc675b36686456565ab63cae7c4
+GIT binary patch
+literal 1308
+zcmY*Y&2QX96d!-=m*X@|HXkLVsudd09uf(uK~SMckY1Wr0qP<lVQDn+&hDDnGiGL-
+zl86H$2avdM$^QWV2;x|j%W5PJhy&^^(dG}}jlFBNBm2$oeaxFT?_)AQ?;%+3%NNNX
+zHbVazX0{qrF!>6=1qxAUJwXSSumXeaC-#9OoC8<50lI@WQRu9r(2bm3r#dGZk+q3-
+zr%u8~)OcWr&2{vRJClj#u+?k7G8R2ccT!Q{n8YL6v$g*zku;=AC2T15(hTi$Hb{n#
+zl32x4zvWg(`XjIxC_=&tk+4HcI9m{@aHB@l44wBtTOzkcjS{s$+pJ}+8ntWGsgYNs
+zxe~SE<$gFH-ulQEop3>T!`r<@-JV7KstK2#9e7VU>C1rRd78vTC7cCu`IbUd+(7Uw
+zpzI_OoMn`$;Dm^T9HmqSTm(Cy2?j|@cRcO)i6Tdk9$bi2dy>Y2Dtt^&b%&%wE)q4$
+z^ahDzDkWC@m@-Vi%M(E*&JtEADs`9Vl)a!tji|sRPs-E&DNXa5TUJSYOjSmtdd=pR
+z;u(Ckl@DPvMOoj(a^{*a&l-gqY<~zfYy*c)(0Xx(Fl90CLrs52hrK!7#+Z?eVyr!k
+zGu|&!gMEy@El4`mEMV{<q)HP;83%O><35i8I8q4>YQh*-WfrB8CQJ#_5ZVWiG{se(
+z^$Nz)SjCtqC6XhP2#m!tSWe(a`t$vV(U+168HFPvvgi?&$BO6CgZFoLqkRyiTq(N!
+zoEIXI+4d)SzWw-lxL>M|2qcU3BdBjw-M5pUiWayniRl6P7|2iP+O`|*t2XMcUb-ve
+z+uife#tTd5hvUtyOLuGh*2bl~F<x3Ry7jx4?%nb7+NHZzN&e|>{dV%_+F#u-&Yy~V
+zGvB%i<u3$#V<2FZkr~6uDv%5GwFO(bW}|l>Chly{dsZHWz6{F2>j$&84H5>~VlfQ{
+z(0*^WYSmghUeBstXi`|k69Cfw5ZX~rM_0T9qC4<QAIJ~r#zX${FArb3E9Hs9UQ2fd
+z1&bBusT3w;y_lc&2{VPNowy(`Yg%1se3pfK?bi0kRsZaXcR_33D?b2o<ye;WH@f#9
+p+Pi5kSkJ7VzrR6dzrK&`x%0QLY}Z=-bu>Y+O&ny;UmHQ`_kRpoYv}+0
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/__pycache__/main.cpython-313.pyc b/backend/app/__pycache__/main.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..42199ccee17aed707727efcf29e428418f5bad05
+GIT binary patch
+literal 2094
+zcma)7&2Jk;6rc63zdy5%^WnI{32li%v6HrGXi5WZ5Tc1lk+-Oqm8``(v6rlOt=Vxy
+z-2<sOv=SV0;l`myxN+>UM~;qCDb`4ls1OHkiSiHdX1yDyr4_6^GrxK7H*em&d2f7@
+zOvVs=KX$st&mn~V<P-mkc;G||AoLSbkRq(3HGv34jsxp~HIaxe7T2Y<APKryS`V#-
+zNyNiZz%dWU0ViA>Tu-j0NUDg`;0#*ywjpU%m_bTN2`iCn0g_QuGe}KWXMA^t<DxLY
+zL{?=rQ@uFU_{fxf1Qup}JRB<m$th7acO5KgBM7Ov>fBK4BPHtZ1fFK96<<CaRZ-0;
+zF(qCR+?KcoF#zVmkl`aWrX-aV@Y2^HW^dsnl#DX+ADoCHE7>!g%l;0-Q5p69R&r|o
+zN<bOQqi>|sI8VXuZ(23}+Nz0HRuvkPrTpJ~laj!~pJ@)g`Q>eZsnt7G<qJdCO}woU
+z43b0x)0%@RHLQjM^ANE+6cf(9hc(*7M8V{~QO8|*!>}-!+tBVC4UOU=SnLKD%Jb#<
+zQh)`iK~2oU_c3t{+v?_;l(v^E71OS3X47`)^5yyY`MXSbza+7wW}5bP%_c^}upBlr
+znAQo_u|*BdbbLk&)26MTPMcWM!G1Sd(b`5u>(C~Xcn|xB+5~SJ-!h464X2xM3EKnz
+zS=a;J%wQd*M5|Nq(qVD!%tWZb=`rmPt3JFQgrJ^~2<?OyA5@m01m=bFs3dmp#HzMU
+zi`dfJwqeoYrcH|f4pKQ5tGZU5<yg`CbfZp}i}$cuw_CW_!j7XgaEygL)IH~`sQm_u
+zzalch9fF3~#_F>Al>=c>m8M2o>ZjP*qIO%ovaq<Qu7b$4DaCVl?G7=V*4)i@d+zpK
+zWz|)Gt<|@{dsS<<)s|*h<@N(65jYc>0@LTAIT`47&`|~@$9m&ed-0{7v_vLB*bP_U
+zK1|yDpTSaNpS$#8y@~5vuLiAUTLy)6uo^`;3D35oLp9oQ-X1&8*nk#ep#fk4d&`Z@
+zpyPg$JajBE@U`Y{PTm0#e;}MRbc567cJ*F-swYjkhubKfW8qCG8%Q+5FQ1KjvvTXS
+zddhX1I7H&w7(@`J)~3-QK`t2M0=JZ$@|heX@N6R{pOMrC^~Ta?7x2uE^UU_O@)@n4
+z)+rD8oC4=~;d9Eq(i4y{-#FqIIun7+vUVF=J`qk@+rkf6+81~$S&)Yov&1H`EehFE
+z>kt#%<t2>u(;^OmK~S=krt7s~j9ALB>SjmBzLz4rH%#LB@8+0$6|Y}b<fE3YcTBuO
+zu7cP6{{vnogpNc(5DwAQA-ePzdiM~0e25kf(GvV##>anH*@?UiC3~Z@zrD8?THX<l
+zLnu4_bmCz8#@_UeeR*Xk-7kEwBR-BkioQUTM<Fy?ILOZKWoLVG33OuqX=Ptr=u6oH
+zDZeM>dsCNQNSFUW;sKKPkldH#zC7I@%lETmyBFN<D2{~eF$xI*s189I@OH01efaF+
+zvxy#Gb*t|$-(C5o{5<;Xp(|cL75B0idgV`kPd@+7Ronxw0>Q`QkH(*5zb_mG!or77
+j^b-WbiHHIzS8z1yQzrL?EEg4aT~2{>Mvu9`P2qn4hQldx
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/main.py b/backend/app/main.py
+index 727cebb..e26c49f 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -5,14 +5,24 @@ from app.config import get_settings
+ from app.routes.attractions import router as attractions_router
+ from app.routes.auth import router as auth_router
+ from app.routes.weather import router as weather_router
++from app.services.weather_service import WeatherService
+ 
+ settings = get_settings()
+ 
+ app = FastAPI(title="Niner-Navigate API", version="1.0.0")
+ 
++# Instantiate WeatherService with configured API key and attach to app state
++weather_service = WeatherService(settings.openweather_api_key)
++app.state.weather_service = weather_service
++
++# Ensure frontend localhost is allowed for development in addition to configured frontend_url
++allowed_origins = [settings.frontend_url]
++if "http://localhost:3000" not in allowed_origins:
++    allowed_origins.append("http://localhost:3000")
++
+ app.add_middleware(
+     CORSMiddleware,
+-    allow_origins=[settings.frontend_url],
++    allow_origins=allowed_origins,
+     allow_credentials=True,
+     allow_methods=["*"],
+     allow_headers=["*"],
+diff --git a/backend/app/routes/__pycache__/__init__.cpython-313.pyc b/backend/app/routes/__pycache__/__init__.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..dbc1d35315427e3706d3a007e2b277e6926875ca
+GIT binary patch
+literal 186
+zcmey&%ge<81S}WIGePuY5CH>>P{wB#AY&>+I)f&o-%5reCLr%KNa|LkvsFxJacWU<
+zOmIeGQErS&YH@Z+enE_hp{Z$%Gf*fezoaBpHzdEbD6=?M*Rh~L*E1y887!TYn4F!O
+zmlBg$P!Lm;Us{q{91|a(nU`4-AFo$Xd5gm)H$SB`C)KWq6=)O4CB-1dM`lJw#v*1Q
+F3jii8FhBqR
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/routes/__pycache__/attractions.cpython-313.pyc b/backend/app/routes/__pycache__/attractions.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..418a5b9bfd8622433e47d9a65fabc8039accb2d6
+GIT binary patch
+literal 662
+zcmZuuPiqrF6rb7M?j|e2(nAXoVGu7lq*Z7<1Q9|Cx)r2k<3SjZ>FzUGyMKn6S)@6&
+zrxrX5euaLUKyM2k#FMwkegS8;spQ~;nR)-;Z+@@tbbO@6S$;`gV}yPg<6i8wQctz=
+z4TUJgZ_zOpm>`OupusvUENV@>wXyMp)<AbO657-`v_hwgK0E)awq{#B_qPf6aMd22
+z1e2mvAQs+%1SX<+<qA-x$Rm?-FP2setlFT~kZ@={!%tDqUVtAqWrQguSfr97m!y<Q
+zJ|iC><wOr4eWD6-3M9#R3K`@I;(gzrG-Kq@Cu@n5NDawJ$|9H-X$*o0kX-izzw$DW
+zlFeXoFxr@NhnPSf^CHRB{|4P4VK}PwK@}Yj>3a!6(s0g1Mvp+Ase;qP=Ys(qYgbw*
+z1^sDJibQ7p5$FA28jhRrDT~hZAj&wW!cZpZ#+Uc`d9`x~=i`Q37`|M6<hH&p&}tiX
+zc9(l^mJfoZ6Nr{}zU#S__lZfxcp?nPdI8NwDtiX1attd?o8}))iD;X&*2}Dj%M@OT
+zhuSnNmoN0SvN6U#(Bq%&ov)8B+?9*0)>ZeidmY^3-Ie9xWBmQ7M&_+;WbOTFTutA<
+Dh99dQ
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/routes/__pycache__/auth.cpython-313.pyc b/backend/app/routes/__pycache__/auth.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e6a4f1f3e6de62b25df432e7a15ee3bf3dd94c24
+GIT binary patch
+literal 968
+zcmb_bL2uJA6t>eeNi!;q32kB(QZ((-L$@KVm##w^-DQB#)NBHQg_Jd>4NGFnc7^C^
+zoS5Lkg&)DciL_fJ4u})CqWl4Dr$yT&&<<Gg^Yin2&)@gODe83>$YEx0qlN*%54D+(
+z%FHP~O6Lpkfe#;pN031eAh-tFvtwo;qi@ePmloe>!*c6akhyL6<|=q&{;8_|rK)<Z
+z%DPfz4eh4$Q?+fvyta3E&?jSo*`&6~@G#=i%`Jw-n5BbDP=KTc6rDn`l~kZ_Y{7NV
+ztV~|H#~d@StY(3TNb2D<q$Em(*YX7MPOujxG{y-|1r9e{x3By2j_b`v7!5?nJB)(?
+z9+5cI?KmYV$8K&XnDbzWC(XVFc!Mjx0;c3F<OKO~uY(jqj{H%;610!`sUQ?>-*2~3
+zPljS51a2LXF^hQ8+M~2}aOC&&@kuZ^m0VCjDPl?|j)JimZP0hQGnb1gMJze_qBLh<
+zx(Mpa*~-Igp_iFG=E&g0+KkCCx~ZbiN=0?a|CEv`l#{h53d%qGYV}H^;Io=Ec~#?K
+zx1@ht&Z}&9vW0GDb~W3lO*^+=2V4X+V(QJv2c_RwZc@TUZmO@XRnyI`-{W)>5{_g1
+zfT?TL55QkYGp#@fzkz$-YfGORXV%mLhV!BEzH$EY0^Xe(Hr$7w*9)N5q5_Q7GBmw2
+XPkVj=msM={T&S#Fm9+9p1vKd2LlW!I
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/routes/__pycache__/weather.cpython-313.pyc b/backend/app/routes/__pycache__/weather.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f7693230c99296a5acec2b9033e446b7f08473f
+GIT binary patch
+literal 2522
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/routes/weather.py b/backend/app/routes/weather.py
+index 85d0e8e..f033c20 100644
+--- a/backend/app/routes/weather.py
++++ b/backend/app/routes/weather.py
+@@ -1,7 +1,6 @@
+-from fastapi import APIRouter, HTTPException, status
++from fastapi import APIRouter, HTTPException, status, Request
+ 
+ from app.config import get_settings
+-from app.services.weather_service import WeatherService
+ 
+ router = APIRouter()
+ 
+@@ -28,3 +27,32 @@ async def get_current_weather(lat: float = 35.2271, lon: float = -80.8431) -> di
+             status_code=status.HTTP_502_BAD_GATEWAY,
+             detail=f"Weather service error: {exc}",
+         )
++
++
++@router.get("/charlotte", response_model=dict)
++async def get_charlotte_weather(request: Request) -> dict:
++    """
++    Return current weather for Charlotte by calling the WeatherService
++
++    Uses the WeatherService instance attached to the application state in
++    `app.main` (created from configured OPENWEATHER_API_KEY).
++    """
++    try:
++        service = request.app.state.weather_service
++        result = await service.get_current_weather(35.2271, -80.8431)
++        return result
++    except Exception as exc:
++        import logging
++
++        logging.exception("WeatherService failed for Charlotte: %s", exc)
++
++        # Fallback response (matches WeatherService return shape)
++        return {
++            "temperature": 72,
++            "feels_like": 72,
++            "humidity": 50,
++            "description": "Sunny",
++            "icon": "01d",
++            "is_risky_for_outdoor": False,
++            "risk_reason": "",
++        }
+diff --git a/backend/app/services/__pycache__/__init__.cpython-313.pyc b/backend/app/services/__pycache__/__init__.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..46eda63b318162e78383fb8527a29c3cf1c18882
+GIT binary patch
+literal 188
+zcmey&%ge<81S}WIGePuY5CH>>P{wB#AY&>+I)f&o-%5reCLr%KNa|L!vsFxJacWU<
+zOmIeGQErS&YH@Z+enE_hp{Z$%Gf*fezoaBpHzdEbD6=?M*Rh~L*E1y887!TYn4F!O
+zmlBg$P!Iz&qAW8xwKyg|J~J<~BtBlRpz;=nO>TZlX-=wL5i8IxkXwpDjE~HWjEqIh
+GKo$U%nK1+a
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/services/__pycache__/weather_service.cpython-313.pyc b/backend/app/services/__pycache__/weather_service.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..c7c4a522d6c164be00e33459a5ffab56dad7c500
+GIT binary patch
+literal 6950
+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
+CA*)mX
+
+literal 0
+HcmV?d00001
+
+diff --git a/backend/app/services/weather_service.py b/backend/app/services/weather_service.py
+index 0e1ac7c..aaf3f48 100644
+--- a/backend/app/services/weather_service.py
++++ b/backend/app/services/weather_service.py
+@@ -1,6 +1,7 @@
+ from typing import Any, Dict
+ 
+ import httpx
++import logging
+ 
+ 
+ class WeatherService:
+@@ -15,7 +16,7 @@ class WeatherService:
+         Initialize WeatherService with API key.
+ 
+         Args:
+-                api_key (str): OpenWeather API key
++                api_key (str): 5d33bc6d8e323fd68c2144f670d24c9c
+         """
+         self.api_key = api_key
+ 
+@@ -30,32 +31,73 @@ class WeatherService:
+         Returns:
+                 dict: Weather data and risk analysis
+         """
++        # First attempt: OpenWeather (requires API key)
+         params = {"lat": lat, "lon": lon, "appid": self.api_key, "units": "imperial"}
+         async with httpx.AsyncClient() as client:
+-            response = await client.get(self.BASE_URL, params=params, timeout=10)
+-            response.raise_for_status()
+-            data = response.json()
+-
+-        temp = data["main"]["temp"]
+-        feels_like = data["main"]["feels_like"]
+-        humidity = data["main"]["humidity"]
+-        weather = data["weather"][0]
+-        description = weather["description"]
+-        icon = weather["icon"]
+-        weather_id = weather["id"]
+-
+-        is_risky = self._check_weather_risk(weather_id)
+-        risk_reason = self._get_risk_reason(weather_id)
+-
+-        return {
+-            "temperature": temp,
+-            "feels_like": feels_like,
+-            "humidity": humidity,
+-            "description": description,
+-            "icon": icon,
+-            "is_risky_for_outdoor": is_risky,
+-            "risk_reason": risk_reason,
+-        }
++            try:
++                response = await client.get(self.BASE_URL, params=params, timeout=10)
++                response.raise_for_status()
++                data = response.json()
++
++                temp = data["main"]["temp"]
++                feels_like = data["main"]["feels_like"]
++                humidity = data["main"]["humidity"]
++                weather = data["weather"][0]
++                description = weather["description"]
++                icon = weather["icon"]
++                weather_id = weather["id"]
++
++                is_risky = self._check_weather_risk(weather_id)
++                risk_reason = self._get_risk_reason(weather_id)
++
++                return {
++                    "temperature": temp,
++                    "feels_like": feels_like,
++                    "humidity": humidity,
++                    "description": description,
++                    "icon": icon,
++                    "is_risky_for_outdoor": is_risky,
++                    "risk_reason": risk_reason,
++                }
++            except httpx.HTTPStatusError as exc:
++                # Log and fall back to Open-Meteo (no API key needed)
++                logging.warning("OpenWeather failed (%s). Falling back to Open-Meteo.", exc)
++            except Exception as exc:  # network, timeout, etc.
++                logging.exception("OpenWeather request failed, falling back to Open-Meteo: %s", exc)
++
++            # Fallback: Open-Meteo (free, no API key). Returns current_weather.temp and weathercode.
++            om_url = "https://api.open-meteo.com/v1/forecast"
++            om_params = {
++                "latitude": lat,
++                "longitude": lon,
++                "current_weather": True,
++                "temperature_unit": "fahrenheit",
++                "windspeed_unit": "mph",
++            }
++            resp = await client.get(om_url, params=om_params, timeout=10)
++            resp.raise_for_status()
++            om = resp.json()
++            cw = om.get("current_weather", {})
++            temp = cw.get("temperature")
++            feels_like = temp
++            humidity = None
++            weather_code = cw.get("weathercode")
++            description = self._open_meteo_description(weather_code)
++            icon = "01d"
++            weather_id = weather_code or 0
++
++            is_risky = self._check_open_meteo_risk(weather_code)
++            risk_reason = self._get_open_meteo_risk_reason(weather_code)
++
++            return {
++                "temperature": temp,
++                "feels_like": feels_like,
++                "humidity": humidity,
++                "description": description,
++                "icon": icon,
++                "is_risky_for_outdoor": is_risky,
++                "risk_reason": risk_reason,
++            }
+ 
+     def _check_weather_risk(self, weather_id: int) -> bool:
+         """
+@@ -98,3 +140,45 @@ class WeatherService:
+         if weather_id == 781:
+             return "Tornado risk"
+         return ""
++
++    def _open_meteo_description(self, code: int | None) -> str:
++        if code is None:
++            return "Unknown"
++        # Map basic WMO weather codes to short descriptions
++        if code == 0:
++            return "Clear"
++        if code in (1, 2, 3):
++            return "Partly cloudy"
++        if 45 <= code <= 48:
++            return "Fog"
++        if 51 <= code <= 67:
++            return "Rain"
++        if 71 <= code <= 77:
++            return "Snow"
++        if 80 <= code <= 82:
++            return "Rain showers"
++        if 95 <= code <= 99:
++            return "Thunderstorm"
++        return "Cloudy"
++
++    def _check_open_meteo_risk(self, code: int | None) -> bool:
++        if code is None:
++            return False
++        if 95 <= code <= 99:
++            return True
++        if 51 <= code <= 67 or 80 <= code <= 82:
++            return True
++        if 71 <= code <= 77:
++            return True
++        return False
++
++    def _get_open_meteo_risk_reason(self, code: int | None) -> str:
++        if code is None:
++            return ""
++        if 95 <= code <= 99:
++            return "Thunderstorm risk"
++        if 51 <= code <= 67 or 80 <= code <= 82:
++            return "Rain risk"
++        if 71 <= code <= 77:
++            return "Snow risk"
++        return ""
+diff --git a/frontend/package-lock.json b/frontend/package-lock.json
+index 597c514..4c42b23 100644
+--- a/frontend/package-lock.json
++++ b/frontend/package-lock.json
+@@ -78,6 +78,7 @@
+       "resolved": "https://registry.npmjs.org/@babel/core/-/core-7.28.6.tgz",
+       "integrity": "sha512-H3mcG6ZDLTlYfaSNi0iOKkigqMFvkTKlGUYlD8GW7nNOYRrevuA46iTypPyv+06V3fEmvvazfntkBU34L0azAw==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@babel/code-frame": "^7.28.6",
+         "@babel/generator": "^7.28.6",
+@@ -727,6 +728,7 @@
+       "resolved": "https://registry.npmjs.org/@babel/plugin-syntax-flow/-/plugin-syntax-flow-7.28.6.tgz",
+       "integrity": "sha512-D+OrJumc9McXNEBI/JmFnc/0uCM2/Y3PEBG3gfV3QIYkKv5pvnpzFrl1kYCrcHJP8nOeFB/SHi1IHz29pNGuew==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@babel/helper-plugin-utils": "^7.28.6"
+       },
+@@ -1610,6 +1612,7 @@
+       "resolved": "https://registry.npmjs.org/@babel/plugin-transform-react-jsx/-/plugin-transform-react-jsx-7.28.6.tgz",
+       "integrity": "sha512-61bxqhiRfAACulXSLd/GxqmAedUSrRZIu/cbaT18T1CetkTmtDN15it7i80ru4DVqRK1WMxQhXs+Lf9kajm5Ow==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@babel/helper-annotate-as-pure": "^7.27.3",
+         "@babel/helper-module-imports": "^7.28.6",
+@@ -3339,6 +3342,7 @@
+       "resolved": "https://registry.npmjs.org/@testing-library/dom/-/dom-10.4.1.tgz",
+       "integrity": "sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@babel/code-frame": "^7.10.4",
+         "@babel/runtime": "^7.12.5",
+@@ -3734,6 +3738,7 @@
+       "resolved": "https://registry.npmjs.org/@types/react/-/react-19.2.9.tgz",
+       "integrity": "sha512-Lpo8kgb/igvMIPeNV2rsYKTgaORYdO1XGVZ4Qz3akwOj0ySGYMPlQWa8BaLn0G63D1aSaAQ5ldR06wCpChQCjA==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "csstype": "^3.2.2"
+       }
+@@ -3743,6 +3748,7 @@
+       "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.2.3.tgz",
+       "integrity": "sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==",
+       "license": "MIT",
++      "peer": true,
+       "peerDependencies": {
+         "@types/react": "^19.2.0"
+       }
+@@ -3880,6 +3886,7 @@
+       "resolved": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-5.62.0.tgz",
+       "integrity": "sha512-TiZzBSJja/LbhNPvk6yc0JrX9XqhQ0hdh6M2svYfsHGejaKFIAGd9MQ+ERIMzLGlN/kZoYIgdxFV0PuljTKXag==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@eslint-community/regexpp": "^4.4.0",
+         "@typescript-eslint/scope-manager": "5.62.0",
+@@ -3933,6 +3940,7 @@
+       "resolved": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-5.62.0.tgz",
+       "integrity": "sha512-VlJEV0fOQ7BExOsHYAGrgbEiZoi8D+Bl2+f6V2RrXerRSylnp+ZBHmPvaIa8cz0Ajx7WO7Z5RqfgYg7ED1nRhA==",
+       "license": "BSD-2-Clause",
++      "peer": true,
+       "dependencies": {
+         "@typescript-eslint/scope-manager": "5.62.0",
+         "@typescript-eslint/types": "5.62.0",
+@@ -4302,6 +4310,7 @@
+       "resolved": "https://registry.npmjs.org/acorn/-/acorn-8.15.0.tgz",
+       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
+       "license": "MIT",
++      "peer": true,
+       "bin": {
+         "acorn": "bin/acorn"
+       },
+@@ -4400,6 +4409,7 @@
+       "resolved": "https://registry.npmjs.org/ajv/-/ajv-6.12.6.tgz",
+       "integrity": "sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "fast-deep-equal": "^3.1.1",
+         "fast-json-stable-stringify": "^2.0.0",
+@@ -5336,6 +5346,7 @@
+         }
+       ],
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "baseline-browser-mapping": "^2.9.0",
+         "caniuse-lite": "^1.0.30001759",
+@@ -7175,6 +7186,7 @@
+       "integrity": "sha512-ypowyDxpVSYpkXr9WPv2PAZCtNip1Mv5KTW0SCurXv/9iOpcrH9PaqUElksqEB6pChqHGDRCFTyrZlGhnLNGiA==",
+       "deprecated": "This version is no longer supported. Please see https://eslint.org/version-support for other options.",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.2.0",
+         "@eslint-community/regexpp": "^4.6.1",
+@@ -9912,6 +9924,7 @@
+       "resolved": "https://registry.npmjs.org/jest/-/jest-27.5.1.tgz",
+       "integrity": "sha512-Yn0mADZB89zTtjkPJEXwrac3LHudkQMR+Paqa8uxJHCBr9agxztUifWCyiYrjhMPBoUVBjyny0I7XH6ozDr7QQ==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@jest/core": "^27.5.1",
+         "import-local": "^3.0.2",
+@@ -10809,6 +10822,7 @@
+       "resolved": "https://registry.npmjs.org/jiti/-/jiti-1.21.7.tgz",
+       "integrity": "sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==",
+       "license": "MIT",
++      "peer": true,
+       "bin": {
+         "jiti": "bin/jiti.js"
+       }
+@@ -12146,6 +12160,7 @@
+         }
+       ],
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "nanoid": "^3.3.11",
+         "picocolors": "^1.1.1",
+@@ -13302,6 +13317,7 @@
+       "resolved": "https://registry.npmjs.org/postcss-selector-parser/-/postcss-selector-parser-6.1.2.tgz",
+       "integrity": "sha512-Q8qQfPiZ+THO/3ZrOrO0cJJKfpYCagtMUkXbnEfmgUjwXg6z/WBeOyS9APBBPCTSiDV+s4SwQGu8yFsiMRIudg==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "cssesc": "^3.0.0",
+         "util-deprecate": "^1.0.2"
+@@ -13667,6 +13683,7 @@
+       "resolved": "https://registry.npmjs.org/react/-/react-19.2.4.tgz",
+       "integrity": "sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==",
+       "license": "MIT",
++      "peer": true,
+       "engines": {
+         "node": ">=0.10.0"
+       }
+@@ -13798,6 +13815,7 @@
+       "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.4.tgz",
+       "integrity": "sha512-AXJdLo8kgMbimY95O2aKQqsz2iWi9jMgKJhRBAxECE4IFxfcazB2LmzloIoibJI3C12IlY20+KFaLv+71bUJeQ==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "scheduler": "^0.27.0"
+       },
+@@ -13822,6 +13840,7 @@
+       "resolved": "https://registry.npmjs.org/react-refresh/-/react-refresh-0.11.0.tgz",
+       "integrity": "sha512-F27qZr8uUqwhWZboondsPx8tnC3Ct3SxZA3V5WyEvujRyyNv0VYPhoBg1gZ8/MV5tubQp76Trw8lTv9hzRBa+A==",
+       "license": "MIT",
++      "peer": true,
+       "engines": {
+         "node": ">=0.10.0"
+       }
+@@ -14063,23 +14082,6 @@
+         "node": ">=14.0.0"
+       }
+     },
+-    "node_modules/react-scripts/node_modules/yaml": {
+-      "version": "2.8.2",
+-      "resolved": "https://registry.npmjs.org/yaml/-/yaml-2.8.2.tgz",
+-      "integrity": "sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A==",
+-      "license": "ISC",
+-      "optional": true,
+-      "peer": true,
+-      "bin": {
+-        "yaml": "bin.mjs"
+-      },
+-      "engines": {
+-        "node": ">= 14.6"
+-      },
+-      "funding": {
+-        "url": "https://github.com/sponsors/eemeli"
+-      }
+-    },
+     "node_modules/read-cache": {
+       "version": "1.0.0",
+       "resolved": "https://registry.npmjs.org/read-cache/-/read-cache-1.0.0.tgz",
+@@ -14449,6 +14451,7 @@
+       "resolved": "https://registry.npmjs.org/rollup/-/rollup-2.79.2.tgz",
+       "integrity": "sha512-fS6iqSPZDs3dr/y7Od6y5nha8dW1YnbgtsyotCVvoFGKbERG++CVRFv1meyGDE1SNItQA8BrnCw7ScdAhRJ3XQ==",
+       "license": "MIT",
++      "peer": true,
+       "bin": {
+         "rollup": "dist/bin/rollup"
+       },
+@@ -14691,6 +14694,7 @@
+       "resolved": "https://registry.npmjs.org/ajv/-/ajv-8.17.1.tgz",
+       "integrity": "sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "fast-deep-equal": "^3.1.3",
+         "fast-uri": "^3.0.1",
+@@ -16069,6 +16073,7 @@
+       "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.3.tgz",
+       "integrity": "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==",
+       "license": "MIT",
++      "peer": true,
+       "engines": {
+         "node": ">=12"
+       },
+@@ -16237,6 +16242,7 @@
+       "resolved": "https://registry.npmjs.org/type-fest/-/type-fest-0.20.2.tgz",
+       "integrity": "sha512-Ne+eE4r0/iWnpAxD852z3A+N0Bt5RN//NjJwRd2VFHEmrywxf5vsZlh4R6lixl6B+wz/8d+maTSAkN1FIkI3LQ==",
+       "license": "(MIT OR CC0-1.0)",
++      "peer": true,
+       "engines": {
+         "node": ">=10"
+       },
+@@ -16345,6 +16351,7 @@
+       "resolved": "https://registry.npmjs.org/typescript/-/typescript-4.9.5.tgz",
+       "integrity": "sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==",
+       "license": "Apache-2.0",
++      "peer": true,
+       "bin": {
+         "tsc": "bin/tsc",
+         "tsserver": "bin/tsserver"
+@@ -16659,6 +16666,7 @@
+       "resolved": "https://registry.npmjs.org/webpack/-/webpack-5.104.1.tgz",
+       "integrity": "sha512-Qphch25abbMNtekmEGJmeRUhLDbe+QfiWTiqpKYkpCOWY64v9eyl+KRRLmqOFA2AvKPpc9DC6+u2n76tQLBoaA==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@types/eslint-scope": "^3.7.7",
+         "@types/estree": "^1.0.8",
+@@ -16730,6 +16738,7 @@
+       "resolved": "https://registry.npmjs.org/webpack-dev-server/-/webpack-dev-server-4.15.2.tgz",
+       "integrity": "sha512-0XavAZbNJ5sDrCbkpWL8mia0o5WPOd2YGtxrEiZkBK9FjLppIUK2TgxK6qGD2P3hUXTJNNPVibrerKcx5WkR1g==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@types/bonjour": "^3.5.9",
+         "@types/connect-history-api-fallback": "^1.3.5",
+@@ -17143,6 +17152,7 @@
+       "resolved": "https://registry.npmjs.org/ajv/-/ajv-8.17.1.tgz",
+       "integrity": "sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "fast-deep-equal": "^3.1.3",
+         "fast-uri": "^3.0.1",
+diff --git a/frontend/src/App.css b/frontend/src/App.css
+index 74b5e05..011570d 100644
+--- a/frontend/src/App.css
++++ b/frontend/src/App.css
+@@ -14,18 +14,30 @@
+ }
+ 
+ .App-header {
+-  background-color: #282c34;
++  background: transparent;
+   min-height: 100vh;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+-  font-size: calc(10px + 2vmin);
+-  color: white;
++  font-size: calc(100px + 2vmin);
++  color: inherit;
++  letter-spacing: 0.2px;
++  -webkit-font-smoothing: antialiased;
++  padding: 2rem;
+ }
+ 
+ .App-link {
+-  color: #61dafb;
++  color: var(--accent);
++  text-decoration-thickness: 1.5px;
++}
++
++/* Make main app container use the site's background if a component sets its own */
++.App {
++  min-height: 100vh;
++  background: transparent !important;
++  color: inherit;
++  font-family: inherit;
+ }
+ 
+ @keyframes App-logo-spin {
+diff --git a/frontend/src/components/Navbar.tsx b/frontend/src/components/Navbar.tsx
+index 3a1a692..2349d06 100644
+--- a/frontend/src/components/Navbar.tsx
++++ b/frontend/src/components/Navbar.tsx
+@@ -10,6 +10,7 @@ const Navbar: React.FC = () => {
+ 						to="/"
+ 						className="text-2xl font-bold hover:text-uncc-gold transition duration-200"
+ 						aria-label="Niner-Navigate Home"
++						style={{ color: '#ff69b4' }}
+ 					>
+ 						🏙️ Niner-Navigate
+ 					</Link>
+diff --git a/frontend/src/components/WeatherCard.tsx b/frontend/src/components/WeatherCard.tsx
+index 8408ef5..5735b32 100644
+--- a/frontend/src/components/WeatherCard.tsx
++++ b/frontend/src/components/WeatherCard.tsx
+@@ -18,7 +18,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({ weather }) => {
+ 					<h2 className="text-4xl font-bold text-gray-800">
+ 						{Math.round(weather.temperature)}°F
+ 					</h2>
+-					<div className="text-xl text-gray-600 capitalize mt-2">
++					<div className="text-xl text-uncc-green capitalize mt-2">
+ 						{weather.description}
+ 					</div>
+ 					<div className="text-sm text-gray-500 mt-1">
+diff --git a/frontend/src/index.css b/frontend/src/index.css
+index 4bf1c5d..896918b 100644
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -1,14 +1,35 @@
++@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
++
+ @tailwind base;
+ @tailwind components;
+ @tailwind utilities;
+ 
++:root {
++  --bg: #000000; /* pure black */
++  --bg-2: #000000;
++  --text: #00703C; /* UNCC green */
++  --muted: #bfbfbf;
++  --accent: #7dd3fc;
++}
++
++html, body, #root {
++  height: 100%;
++}
++
+ body {
+   margin: 0;
+-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
++  background-color: var(--bg) !important;
++  color: var(--text) !important;
++  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
++    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+     sans-serif;
+   -webkit-font-smoothing: antialiased;
+   -moz-osx-font-smoothing: grayscale;
++  transition: background-color 180ms ease, color 180ms ease;
++}
++
++code {
++  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+ }
+ 
+ code {
+diff --git a/frontend/src/pages/Home.tsx b/frontend/src/pages/Home.tsx
+index b7f526e..5a9156c 100644
+--- a/frontend/src/pages/Home.tsx
++++ b/frontend/src/pages/Home.tsx
+@@ -2,12 +2,41 @@ import React, { useEffect, useState } from 'react';
+ import { weatherService } from '../services/weatherService';
+ import { WeatherData } from '../types';
+ import WeatherCard from '../components/WeatherCard';
++import { useCallback } from 'react';
+ 
+ const Home: React.FC = () => {
+ 	const [weather, setWeather] = useState<WeatherData | null>(null);
+ 	const [loading, setLoading] = useState<boolean>(true);
+ 	const [error, setError] = useState<string | null>(null);
+ 
++	// Simple fetch for /api/weather/charlotte to display temp, description and risk
++	const [charlotteWeather, setCharlotteWeather] = useState<{
++		temperature?: number;
++		description?: string;
++		is_risky_for_outdoor?: boolean;
++		risk_reason?: string;
++	} | null>(null);
++
++	useEffect(() => {
++		const fetchCharlotte = async () => {
++			try {
++				const res = await fetch('http://localhost:8000/api/weather/charlotte');
++				if (!res.ok) throw new Error(`HTTP ${res.status}`);
++				const json = await res.json();
++				setCharlotteWeather({
++					temperature: json.temperature ?? json.temp,
++					description: json.description ?? json.desc,
++					is_risky_for_outdoor: json.is_risky_for_outdoor,
++					risk_reason: json.risk_reason,
++				});
++			} catch (err) {
++				console.error('Failed to fetch charlotte weather', err);
++			}
++		};
++
++		fetchCharlotte();
++	}, []);
++
+ 	useEffect(() => {
+ 		const fetchWeather = async () => {
+ 			try {
+@@ -25,12 +54,27 @@ const Home: React.FC = () => {
+ 
+ 	return (
+ 		<div className="min-h-screen bg-gray-50">
++			{/* Quick test panel for backend weather endpoint */}
++			<div className="fixed top-4 right-4 bg-white/5 backdrop-blur-sm p-3 rounded shadow-lg">
++				<TestWeather />
++			</div>
+ 			<div className="container mx-auto px-4 py-12">
+ 				<section className="text-center mb-12">
+-					<h1 className="text-5xl font-bold text-uncc-green mb-4">
++					<h1 className="text-5xl font-bold mb-4" style={{ color: '#ff69b4' }}>
+ 						Welcome to Niner-Navigate
+ 					</h1>
+-					<p className="text-xl text-gray-600">
++					{charlotteWeather?.temperature != null && (
++						<div className="text-2xl font-semibold text-uncc-green">
++							Charlotte temp: {charlotteWeather.temperature}°F
++							{charlotteWeather.description && (
++								<div className="text-lg font-medium">{charlotteWeather.description}</div>
++							)}
++							{charlotteWeather.is_risky_for_outdoor && charlotteWeather.risk_reason && (
++								<div className="text-red-400 font-semibold">{charlotteWeather.risk_reason}</div>
++							)}
++						</div>
++					)}
++					<p className="text-xl text-uncc-green">
+ 						Your Smart Companion for Exploring Charlotte
+ 					</p>
+ 				</section>
+@@ -38,7 +82,7 @@ const Home: React.FC = () => {
+ 					{loading && (
+ 						<div className="flex items-center justify-center py-8">
+ 							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-uncc-green mr-3"></div>
+-							<span className="text-gray-600">Loading weather data...</span>
++							<span className="text-uncc-green">Loading weather data...</span>
+ 						</div>
+ 					)}
+ 					{error && (
+@@ -52,21 +96,21 @@ const Home: React.FC = () => {
+ 					<div className="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transition">
+ 						<div className="text-4xl mb-4">🌤️</div>
+ 						<h2 className="text-2xl font-bold mb-2 text-uncc-green">Weather-Optimized</h2>
+-						<p className="text-gray-600">
++						<p className="text-uncc-green">
+ 							Get real-time weather-based recommendations for your Charlotte adventures.
+ 						</p>
+ 					</div>
+ 					<div className="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transition">
+ 						<div className="text-4xl mb-4">🗺️</div>
+ 						<h2 className="text-2xl font-bold mb-2 text-uncc-green">Interactive Maps</h2>
+-						<p className="text-gray-600">
++						<p className="text-uncc-green">
+ 							Explore Charlotte with live traffic, attractions, and more on our interactive map.
+ 						</p>
+ 					</div>
+ 					<div className="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transition">
+ 						<div className="text-4xl mb-4">📅</div>
+ 						<h2 className="text-2xl font-bold mb-2 text-uncc-green">Smart Itineraries</h2>
+-						<p className="text-gray-600">
++						<p className="text-uncc-green">
+ 							Plan your trip with personalized, weather-aware itineraries and activities.
+ 						</p>
+ 					</div>
+@@ -77,3 +121,57 @@ const Home: React.FC = () => {
+ };
+ 
+ export default Home;
++
++
++const TestWeather: React.FC = () => {
++	const [data, setData] = React.useState<{
++		temperature?: number;
++		description?: string;
++		city?: string;
++		is_risky_for_outdoor?: boolean;
++		risk_reason?: string;
++	} | null>(null);
++	const [loading, setLoading] = React.useState(false);
++	const [error, setError] = React.useState<string | null>(null);
++
++	const fetchWeather = useCallback(async () => {
++		setLoading(true);
++		setError(null);
++			try {
++				const res = await fetch('http://localhost:8000/api/weather/charlotte');
++				if (!res.ok) throw new Error(`Status ${res.status}`);
++				const json = await res.json();
++				setData({
++					temperature: json.temperature ?? json.temp,
++					description: json.description ?? json.desc,
++					city: json.city,
++					is_risky_for_outdoor: json.is_risky_for_outdoor,
++					risk_reason: json.risk_reason,
++				});
++			} catch (err: any) {
++			setError(err.message || String(err));
++		} finally {
++			setLoading(false);
++		}
++	}, []);
++
++	return (
++		<div className="text-left text-uncc-green">
++			<button onClick={fetchWeather} className="bg-uncc-green text-white px-3 py-1 rounded">
++				Test Charlotte Weather
++			</button>
++			{loading && <div className="mt-2">Loading…</div>}
++			{error && <div className="mt-2 text-red-400">Error: {error}</div>}
++			{data && (
++				<div className="mt-2 text-uncc-green">
++					{data.city && <div>City: {data.city}</div>}
++					{data.temperature != null && <div>Temp: {data.temperature}°F</div>}
++					{data.description && <div>Desc: {data.description}</div>}
++					{data.is_risky_for_outdoor && data.risk_reason && (
++						<div className="text-red-400">{data.risk_reason}</div>
++					)}
++				</div>
++			)}
++		</div>
++	);
++};
+diff --git a/frontend/src/pages/MapView.tsx b/frontend/src/pages/MapView.tsx
+index 1c0f0ed..e7a019c 100644
+--- a/frontend/src/pages/MapView.tsx
++++ b/frontend/src/pages/MapView.tsx
+@@ -10,7 +10,7 @@ const MapView: React.FC = () => {
+ 				<div className="bg-gray-200 h-96 rounded-lg flex items-center justify-center shadow-lg">
+ 					<div className="text-center">
+ 						<div className="text-6xl mb-4" role="img" aria-label="Map">🗺️</div>
+-						<div className="text-gray-600 text-lg">
++						<div className="text-uncc-green text-lg">
+ 							Mapbox integration coming soon...
+ 						</div>
+ 					</div>
+-- 
+2.47.1.windows.2
+

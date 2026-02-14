@@ -9,9 +9,9 @@ const Navbar: React.FC = () => {
 					<Link
 						to="/"
 						className="text-2xl font-bold hover:text-uncc-gold transition duration-200"
-						aria-label="Niner-Navigate Home"
+						aria-label="CLTourism Home"
 					>
-						🏙️ Niner-Navigate
+						🏙️ CLTourism
 					</Link>
 					<div className="flex space-x-6">
 						<Link

@@ -8,7 +8,7 @@ from app.routes.weather import router as weather_router
 
 settings = get_settings()
 
-app = FastAPI(title="Niner-Navigate API", version="1.0.0")
+app = FastAPI(title="CLTourism API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,12 +26,12 @@ app.include_router(attractions_router, prefix="/api/attractions", tags=["attract
 @app.get("/")
 def root() -> dict:
     """
-    Root endpoint for Niner-Navigate API.
+    Root endpoint for CLTourism API.
 
     Returns:
             dict: Welcome message
     """
-    return {"message": "Welcome to Niner-Navigate API"}
+    return {"message": "Welcome to CLTourism API"}
 
 
 @app.get("/health")

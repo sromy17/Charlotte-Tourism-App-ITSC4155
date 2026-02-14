@@ -1,4 +1,4 @@
-# <span style="color:gold">CL</span><span style="color:green">ourism</span>: Charlotte Tourism App
+# <span style="color:gold">CL</span><span style="color:green">Tourism</span>: Charlotte Tourism App
 
 **ITSC 4155 - Software Development Project**  
 **Team Members:** Shravan Romy, Josh Miller, Ravi Patel, Gitansh Sharma  
@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-<span style="color:gold">CL</span><span style="color:green">ourism</span> is a fullstack web application that serves as an intelligent, real-time companion for Charlotte tourists. The app provides weather-optimized itinerary management with active monitoring for environmental hazards and traffic congestion.
+<span style="color:gold">CL</span><span style="color:green">Tourism</span> is a fullstack web application that serves as an intelligent, real-time companion for Charlotte tourists. The app provides weather-optimized itinerary management with active monitoring for environmental hazards and traffic congestion.
 
 ## Tech Stack
 

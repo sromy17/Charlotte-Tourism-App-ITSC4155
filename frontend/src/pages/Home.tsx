@@ -28,7 +28,7 @@ const Home: React.FC = () => {
 			<div className="container mx-auto px-4 py-12">
 				<section className="text-center mb-12">
 					<h1 className="text-5xl font-bold text-uncc-green mb-4">
-						Welcome to Niner-Navigate
+						Welcome to CLTourism
 					</h1>
 					<p className="text-xl text-gray-600">
 						Your Smart Companion for Exploring Charlotte

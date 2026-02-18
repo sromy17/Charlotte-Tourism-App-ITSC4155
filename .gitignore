@@ -10,6 +10,13 @@ __pycache__/
 .env
 *.env
 
+<<<<<<< HEAD
+=======
+# Local env variants
+*.env.local
+backend/.env.local
+
+>>>>>>> 8d9799b (chore: update .gitignore to ignore local env files)
 # macOS
 .DS_Store
 
@@ -19,4 +26,8 @@ __pycache__/
 # IDEs
 .vscode/
 .idea/
+<<<<<<< HEAD
 /backend/.env
+=======
+
+>>>>>>> 8d9799b (chore: update .gitignore to ignore local env files)

@@ -1,0 +1,8 @@
+Summary:
+- Move OpenWeather API key to backend/.env (OPENWEATHER_API_KEY)
+- Update WeatherService to read API key from environment
+- Add root .gitignore to ignore env and caches
+- Provide backend/frontend run commands in README and commit changes
+- Remove gitansh.bundle and patches artifacts
+
+Please review and merge into main.

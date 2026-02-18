@@ -1,4 +1,5 @@
 from typing import Any, Dict
+import os
 
 import httpx
 import logging
@@ -11,14 +12,15 @@ class WeatherService:
 
     BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str | None = None) -> None:
         """
-        Initialize WeatherService with API key.
+        Initialize WeatherService with API key from parameter or environment.
 
         Args:
-                api_key (str): 5d33bc6d8e323fd68c2144f670d24c9c
+                api_key (str | None): If provided, used directly; otherwise the
+                    `OPENWEATHER_API_KEY` environment variable is used.
         """
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv('OPENWEATHER_API_KEY')
 
     async def get_current_weather(self, lat: float, lon: float) -> Dict[str, Any]:
         """

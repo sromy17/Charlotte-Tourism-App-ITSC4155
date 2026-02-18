@@ -1,6 +1,8 @@
 from typing import Any, Dict
+import os
 
 import httpx
+import logging
 
 
 class WeatherService:
@@ -10,14 +12,15 @@ class WeatherService:
 
     BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str | None = None) -> None:
         """
-        Initialize WeatherService with API key.
+        Initialize WeatherService with API key from parameter or environment.
 
         Args:
-                api_key (str): OpenWeather API key
+                api_key (str | None): If provided, used directly; otherwise the
+                    `OPENWEATHER_API_KEY` environment variable is used.
         """
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv('OPENWEATHER_API_KEY')
 
     async def get_current_weather(self, lat: float, lon: float) -> Dict[str, Any]:
         """
@@ -30,32 +33,73 @@ class WeatherService:
         Returns:
                 dict: Weather data and risk analysis
         """
+        # First attempt: OpenWeather (requires API key)
         params = {"lat": lat, "lon": lon, "appid": self.api_key, "units": "imperial"}
         async with httpx.AsyncClient() as client:
-            response = await client.get(self.BASE_URL, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response = await client.get(self.BASE_URL, params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
 
-        temp = data["main"]["temp"]
-        feels_like = data["main"]["feels_like"]
-        humidity = data["main"]["humidity"]
-        weather = data["weather"][0]
-        description = weather["description"]
-        icon = weather["icon"]
-        weather_id = weather["id"]
+                temp = data["main"]["temp"]
+                feels_like = data["main"]["feels_like"]
+                humidity = data["main"]["humidity"]
+                weather = data["weather"][0]
+                description = weather["description"]
+                icon = weather["icon"]
+                weather_id = weather["id"]
 
-        is_risky = self._check_weather_risk(weather_id)
-        risk_reason = self._get_risk_reason(weather_id)
+                is_risky = self._check_weather_risk(weather_id)
+                risk_reason = self._get_risk_reason(weather_id)
 
-        return {
-            "temperature": temp,
-            "feels_like": feels_like,
-            "humidity": humidity,
-            "description": description,
-            "icon": icon,
-            "is_risky_for_outdoor": is_risky,
-            "risk_reason": risk_reason,
-        }
+                return {
+                    "temperature": temp,
+                    "feels_like": feels_like,
+                    "humidity": humidity,
+                    "description": description,
+                    "icon": icon,
+                    "is_risky_for_outdoor": is_risky,
+                    "risk_reason": risk_reason,
+                }
+            except httpx.HTTPStatusError as exc:
+                # Log and fall back to Open-Meteo (no API key needed)
+                logging.warning("OpenWeather failed (%s). Falling back to Open-Meteo.", exc)
+            except Exception as exc:  # network, timeout, etc.
+                logging.exception("OpenWeather request failed, falling back to Open-Meteo: %s", exc)
+
+            # Fallback: Open-Meteo (free, no API key). Returns current_weather.temp and weathercode.
+            om_url = "https://api.open-meteo.com/v1/forecast"
+            om_params = {
+                "latitude": lat,
+                "longitude": lon,
+                "current_weather": True,
+                "temperature_unit": "fahrenheit",
+                "windspeed_unit": "mph",
+            }
+            resp = await client.get(om_url, params=om_params, timeout=10)
+            resp.raise_for_status()
+            om = resp.json()
+            cw = om.get("current_weather", {})
+            temp = cw.get("temperature")
+            feels_like = temp
+            humidity = None
+            weather_code = cw.get("weathercode")
+            description = self._open_meteo_description(weather_code)
+            icon = "01d"
+            weather_id = weather_code or 0
+
+            is_risky = self._check_open_meteo_risk(weather_code)
+            risk_reason = self._get_open_meteo_risk_reason(weather_code)
+
+            return {
+                "temperature": temp,
+                "feels_like": feels_like,
+                "humidity": humidity,
+                "description": description,
+                "icon": icon,
+                "is_risky_for_outdoor": is_risky,
+                "risk_reason": risk_reason,
+            }
 
     def _check_weather_risk(self, weather_id: int) -> bool:
         """
@@ -97,4 +141,46 @@ class WeatherService:
             return "Snow risk"
         if weather_id == 781:
             return "Tornado risk"
+        return ""
+
+    def _open_meteo_description(self, code: int | None) -> str:
+        if code is None:
+            return "Unknown"
+        # Map basic WMO weather codes to short descriptions
+        if code == 0:
+            return "Clear"
+        if code in (1, 2, 3):
+            return "Partly cloudy"
+        if 45 <= code <= 48:
+            return "Fog"
+        if 51 <= code <= 67:
+            return "Rain"
+        if 71 <= code <= 77:
+            return "Snow"
+        if 80 <= code <= 82:
+            return "Rain showers"
+        if 95 <= code <= 99:
+            return "Thunderstorm"
+        return "Cloudy"
+
+    def _check_open_meteo_risk(self, code: int | None) -> bool:
+        if code is None:
+            return False
+        if 95 <= code <= 99:
+            return True
+        if 51 <= code <= 67 or 80 <= code <= 82:
+            return True
+        if 71 <= code <= 77:
+            return True
+        return False
+
+    def _get_open_meteo_risk_reason(self, code: int | None) -> str:
+        if code is None:
+            return ""
+        if 95 <= code <= 99:
+            return "Thunderstorm risk"
+        if 51 <= code <= 67 or 80 <= code <= 82:
+            return "Rain risk"
+        if 71 <= code <= 77:
+            return "Snow risk"
         return ""

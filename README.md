@@ -42,16 +42,18 @@ cd cltourism
 2. Backend setup:
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3 -m venv venv
+source venv/bin/activate  # (Windows: venv\Scripts\activate)
 pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+
 ```
 
 3. Frontend setup:
 ```bash
 cd frontend
 npm install
-npm start
+PORT=3000 npm start
 ```
 
 4. Docker setup:

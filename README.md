@@ -1,4 +1,4 @@
-# Niner-Navigate: Charlotte Tourism App
+# <span style="color:gold">CLT</span><span style="color:green">ourism</span>: Charlotte Tourism App
 
 **ITSC 4155 - Software Development Project**  
 **Team Members:** Shravan Romy, Josh Miller, Ravi Patel, Gitansh Sharma  
@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-Niner-Navigate is a fullstack web application that serves as an intelligent, real-time companion for Charlotte tourists. The app provides weather-optimized itinerary management with active monitoring for environmental hazards and traffic congestion.
+<span style="color:gold">CLT</span><span style="color:green">ourism</span> is a fullstack web application that serves as an intelligent, real-time companion for Charlotte tourists. The app provides weather-optimized itinerary management with active monitoring for environmental hazards and traffic congestion.
 
 ## Tech Stack
 
@@ -36,7 +36,7 @@ Niner-Navigate is a fullstack web application that serves as an intelligent, rea
 1. Clone the repository:
 ```bash
 git clone [your-repo-url]
-cd niner-navigate
+cd cltourism
 ```
 
 2. Backend setup:

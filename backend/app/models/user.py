@@ -6,7 +6,7 @@ from app.database import Base
 
 class User(Base):
     """
-    Stores user authentication and profile data for Niner-Navigate.
+    Stores user authentication and profile data for CLTourism.
 
     Includes hashed password, email, and timestamps for creation and updates.
     """

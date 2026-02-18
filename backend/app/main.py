@@ -9,7 +9,7 @@ from app.services.weather_service import WeatherService
 
 settings = get_settings()
 
-app = FastAPI(title="Niner-Navigate API", version="1.0.0")
+app = FastAPI(title="CLTourism API", version="1.0.0")
 
 # Instantiate WeatherService with configured API key and attach to app state
 weather_service = WeatherService(settings.openweather_api_key)
@@ -36,12 +36,12 @@ app.include_router(attractions_router, prefix="/api/attractions", tags=["attract
 @app.get("/")
 def root() -> dict:
     """
-    Root endpoint for Niner-Navigate API.
+    Root endpoint for CLTourism API.
 
     Returns:
             dict: Welcome message
     """
-    return {"message": "Welcome to Niner-Navigate API"}
+    return {"message": "Welcome to CLTourism API"}
 
 
 @app.get("/health")

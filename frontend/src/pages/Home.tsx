@@ -60,8 +60,8 @@ const Home: React.FC = () => {
 			</div>
 			<div className="container mx-auto px-4 py-12">
 				<section className="text-center mb-12">
-					<h1 className="text-5xl font-bold mb-4" style={{ color: '#ff69b4' }}>
-						Welcome to Niner-Navigate
+					<h1 className="text-5xl font-bold text-uncc-green mb-4">
+						Welcome to CLTourism
 					</h1>
 					{charlotteWeather?.temperature != null && (
 						<div className="text-2xl font-semibold text-uncc-green">

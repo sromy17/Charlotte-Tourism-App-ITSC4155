@@ -38,6 +38,12 @@ const Navbar: React.FC = () => {
 						>
 							Profile
 						</Link>
+						<Link
+							to="/login"
+							className="hover:text-uncc-gold transition duration-200"
+						>
+							Login
+						</Link>
 					</div>
 				</div>
 			</div>

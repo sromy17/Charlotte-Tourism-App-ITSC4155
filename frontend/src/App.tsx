@@ -6,24 +6,28 @@ import MapView from './pages/MapView';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
+// REMOVED PROFILE IMPORT
+import Itinerary from './pages/Itinerary'; 
 
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="min-h-screen bg-obsidian selection:bg-uncc-green/30">
+      <div className="min-h-screen bg-[#080808] selection:bg-uncc-green/30">
         <Navbar />
-        <Routes>
-          {/* We point the root path directly to Home.tsx now */}
-          <Route path="/" element={<Home />} />
-          <Route path="/map" element={<MapView />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-        </Routes>
+        <main>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/map" element={<MapView />} />
+            <Route path="/itinerary" element={<Itinerary />} />
+            {/* REMOVED PROFILE ROUTE */}
+          </Routes>
+        </main>
       </div>
     </Router>
   );
 };
 
-// This export default is what fixed that 'no default export' error
 export default App;

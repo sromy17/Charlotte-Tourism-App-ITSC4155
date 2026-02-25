@@ -10,9 +10,10 @@ settings = get_settings()
 
 app = FastAPI(title="CLTourism API", version="1.0.0")
 
+# FIXED: Permissive CORS for development to stop "Connection Refused"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,24 +23,10 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(weather_router, prefix="/api/weather", tags=["weather"])
 app.include_router(attractions_router, prefix="/api/attractions", tags=["attractions"])
 
-
 @app.get("/")
 def root() -> dict:
-    """
-    Root endpoint for CLTourism API.
-
-    Returns:
-            dict: Welcome message
-    """
     return {"message": "Welcome to CLTourism API"}
-
 
 @app.get("/health")
 def health_check() -> dict:
-    """
-    Health check endpoint for monitoring service status.
-
-    Returns:
-            dict: Health status
-    """
     return {"status": "ok"}

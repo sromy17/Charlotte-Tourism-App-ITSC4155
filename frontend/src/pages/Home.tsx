@@ -188,7 +188,7 @@ const Home: React.FC = () => {
                             <p className="text-white/80 mb-14 font-inter leading-relaxed text-xl px-10">
                                 Your custom Queen City pulse is synchronized! We've mapped out the perfect {formatTime(Number(selections.hours))} journey for your {selections.persona} with a {formatCurrency(Number(selections.budget))} budget.
                             </p>
-                            <button onClick={() => window.location.href='/signin'} className="px-14 py-6 rounded-full bg-[#B3A369] text-black font-black uppercase text-sm tracking-[0.4em] hover:scale-105 transition-all">
+                            <button onClick={() => window.location.href='/login'} className="px-14 py-6 rounded-full bg-[#B3A369] text-black font-black uppercase text-sm tracking-[0.4em] hover:scale-105 transition-all">
                                 Unlock Your Dashboard
                             </button>
                         </motion.div>

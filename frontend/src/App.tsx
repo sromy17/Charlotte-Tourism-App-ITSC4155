@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -11,9 +10,10 @@ import ForgotPassword from './pages/ForgotPassword';
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-obsidian selection:bg-uncc-green/30">
         <Navbar />
         <Routes>
+          {/* We point the root path directly to Home.tsx now */}
           <Route path="/" element={<Home />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/login" element={<Login />} />
@@ -25,4 +25,5 @@ const App: React.FC = () => {
   );
 };
 
+// This export default is what fixed that 'no default export' error
 export default App;

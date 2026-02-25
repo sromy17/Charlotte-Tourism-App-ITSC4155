@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@300;400;600;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,16 +8,17 @@
   body {
     margin: 0;
     @apply bg-[#080808] text-[#F9F8F3] antialiased;
+    /* Set Inter as the global UI font */
     font-family: 'Inter', sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  /* Instrument Serif for a premium, classy header look */
+  h1, h2, h3, h4 {
     font-family: 'Instrument Serif', serif;
-    @apply text-[#F9F8F3] font-normal;
+    @apply text-[#F9F8F3] font-normal tracking-tight;
   }
 }
 
-/* Custom Utilities for that "Alive" Feel */
 @layer utilities {
   .glass {
     @apply bg-white/5 backdrop-blur-2xl border border-white/10;
@@ -27,8 +28,9 @@
     color: transparent;
     -webkit-text-stroke: 1px #B3A369;
   }
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  
+  /* Adds a subtle elegant glow to serif text */
+  .serif-glow {
+    text-shadow: 0 0 20px rgba(179, 163, 105, 0.2);
+  }
 }

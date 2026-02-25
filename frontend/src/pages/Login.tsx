@@ -22,8 +22,8 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow">
-      <h2 className="text-2xl font-semibold mb-4">Sign In</h2>
+    <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow text-gray-900">
+      <h2 className="text-2xl font-semibold mb-4 text-gray-900">Sign In</h2>
       <form onSubmit={handleSubmit}>
         <label className="block mb-2">
           <span className="text-sm font-medium">Email</span>
@@ -31,7 +31,7 @@ const Login: React.FC = () => {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green"
+            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green text-gray-900"
             placeholder="you@example.com"
             required
           />
@@ -43,7 +43,7 @@ const Login: React.FC = () => {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green"
+            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green text-gray-900"
             placeholder="Your password"
             required
           />

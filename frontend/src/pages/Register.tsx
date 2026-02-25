@@ -31,8 +31,8 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow">
-      <h2 className="text-2xl font-semibold mb-4">Create an account</h2>
+    <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow text-gray-900">
+      <h2 className="text-2xl font-semibold mb-4 text-gray-900">Create an account</h2>
       <form onSubmit={handleCreate} noValidate>
         <label className="block mb-3">
           <span className="text-sm font-medium">Name</span>
@@ -41,7 +41,7 @@ const Register: React.FC = () => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green"
+            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green text-gray-900"
             placeholder="Your full name"
             required
           />
@@ -57,7 +57,7 @@ const Register: React.FC = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green"
+            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green text-gray-900"
             placeholder="you@example.com"
             required
           />
@@ -73,7 +73,7 @@ const Register: React.FC = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green"
+            className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:ring-uncc-green focus:border-uncc-green text-gray-900"
             placeholder="Create a password"
             required
           />

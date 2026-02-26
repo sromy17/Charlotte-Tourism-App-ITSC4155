@@ -6,13 +6,13 @@ import MapView from './pages/MapView';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
-// REMOVED PROFILE IMPORT
 import Itinerary from './pages/Itinerary'; 
+import Safari from './pages/Safari'; // 1. ADD THIS IMPORT
 
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="min-h-screen bg-[#080808] selection:bg-uncc-green/30">
+      <div className="min-h-screen bg-[#080808] selection:bg-uncc-green/30 text-white">
         <Navbar />
         <main>
           <Routes>
@@ -22,7 +22,10 @@ const App: React.FC = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/map" element={<MapView />} />
             <Route path="/itinerary" element={<Itinerary />} />
-            {/* REMOVED PROFILE ROUTE */}
+            
+            {/* 2. ADD THIS ROUTE */}
+            <Route path="/safari" element={<Safari />} /> 
+            
           </Routes>
         </main>
       </div>

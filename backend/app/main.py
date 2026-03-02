@@ -6,6 +6,12 @@ from app.routes.attractions import router as attractions_router
 from app.routes.auth import router as auth_router
 from app.routes.weather import router as weather_router
 
+from app.database import engine, Base
+import app.models  # This loads your User and Itinerary blueprints
+
+# This command tells Postgres to create the tables if they don't exist yet!
+Base.metadata.create_all(bind=engine)
+
 settings = get_settings()
 
 app = FastAPI(title="CLTourism API", version="1.0.0")

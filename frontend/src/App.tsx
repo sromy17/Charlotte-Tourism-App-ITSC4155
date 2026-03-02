@@ -8,11 +8,12 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import Profile from './pages/Profile';
 import Itinerary from './pages/Itinerary'; 
+import Safari from './pages/Safari'; // 1. ADD THIS IMPORT
 
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="min-h-screen bg-[#080808] selection:bg-uncc-green/30">
+      <div className="min-h-screen bg-[#080808] selection:bg-uncc-green/30 text-white">
         <Navbar />
         <main>
           <Routes>

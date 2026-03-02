@@ -7,30 +7,54 @@
 @layer base {
   body {
     margin: 0;
-    @apply bg-[#080808] text-[#F9F8F3] antialiased;
-    /* Set Inter as the global UI font */
+    /* Using a slightly lifted dark background for better depth */
+    @apply bg-[#050505] text-[#F9F8F3] antialiased;
     font-family: 'Inter', sans-serif;
   }
 
-  /* Instrument Serif for a premium, classy header look */
+  /* Headlines: Serif for elegance, UI: Inter for clarity */
   h1, h2, h3, h4 {
     font-family: 'Instrument Serif', serif;
-    @apply text-[#F9F8F3] font-normal tracking-tight;
+    @apply text-[#F9F8F3] font-normal tracking-tight leading-tight;
+  }
+}
+
+@layer components {
+  /* Enhanced Glassmorphism with internal highlights */
+  .glass {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-2xl;
+    box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  /* Charlotte Safari Branding Gradient */
+  .text-gradient-gold {
+    @apply bg-gradient-to-br from-[#B3A369] via-[#F9F8F3] to-[#8E7E45] bg-clip-text text-transparent;
   }
 }
 
 @layer utilities {
-  .glass {
-    @apply bg-white/5 backdrop-blur-2xl border border-white/10;
+  /* Essential for that hourly weather scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
-  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Ghost text for large background decorative elements */
   .text-ghost {
     color: transparent;
-    -webkit-text-stroke: 1px #B3A369;
+    -webkit-text-stroke: 1px rgba(179, 163, 105, 0.3);
   }
-  
-  /* Adds a subtle elegant glow to serif text */
+
+  /* Sophisticated glow for Serif headers */
   .serif-glow {
-    text-shadow: 0 0 20px rgba(179, 163, 105, 0.2);
+    text-shadow: 0 0 30px rgba(179, 163, 105, 0.15);
+  }
+
+  /* Smooth transition for card hover states */
+  .card-hover {
+    @apply transition-all duration-500 ease-out hover:scale-[1.02] hover:bg-white/[0.05] hover:border-[#B3A369]/30;
   }
 }

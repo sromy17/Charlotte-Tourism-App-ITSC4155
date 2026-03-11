@@ -1,219 +1,202 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion'; 
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-
-const personas = [
-    { label: 'Family Route', img: '/img/cltfan2.jpg', desc: 'Parks & Museums' },
-    { label: 'The Soloist', img: '/img/uptown1.jpg', desc: 'Work & Exploration' }, 
-    { label: 'Squad Trip', img: '/img/cltfans.jpg', desc: 'Friends & Vacation' },
-    { label: 'Date Night', img: '/img/optimist1.jpg', desc: 'Couples & Vibes' },
-];
-
-const vibes = [
-    { id: 'sports', label: 'The Competitor', img: '/img/nascar.jpg', tags: 'Racing, Panthers, Energy' },
-    { id: 'food', label: 'The Foodie', img: '/img/beergarden.jpg', tags: 'Breweries, Local Eats, Patios' },
-    { id: 'music', label: 'The Socialite', img: '/img/cltconcert.avif', tags: 'Live Music, Rooftops, Nightlife' },
-];
 
 const Home: React.FC = () => {
     const navigate = useNavigate();
     const [step, setStep] = useState(0);
+    const [isProcessing, setIsProcessing] = useState(false);
+    
     const [selections, setSelections] = useState({
+        arrival: '',
         persona: '',
-        hours: 24, 
-        vibes: [] as string[],
         budget: 500,
-        radius: 10
+        hours: 24,
+        protocol: 'Standard'
     });
 
-    const formatTime = (h: number) => {
-        if (h === 168) return "1 Week";
-        if (h >= 24) {
-            const days = Math.floor(h / 24);
-            const remainingHours = h % 24;
-            if (remainingHours === 0) return `${days} ${days === 1 ? 'Day' : 'Days'}`;
-            return `${days}d ${remainingHours}h`;
+    // WORLD SHIFT COORDINATES
+    // As you change steps, the background "moves" to a different sector
+    const getWorldTransform = () => {
+        switch(step) {
+            case 0: return { x: '0%', y: '0%', rotate: 0 };
+            case 1: return { x: '15%', y: '-10%', rotate: 2 }; // Shift to Sector Alpha
+            case 2: return { x: '-15%', y: '10%', rotate: -2 }; // Shift to Sector Beta
+            case 3: return { x: '0%', y: '20%', rotate: 0 };   // Shift to Sector Gamma
+            default: return { x: '0%', y: '0%' };
         }
-        return `${h} Hrs`;
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency', currency: 'USD', maximumFractionDigits: 0,
-        }).format(amount);
-    };
+    const personas = [
+        { id: 'soloist', name: 'The Soloist', img: '/img/soloist.jpg', desc: 'Individualized high-focus exploration' },
+        { id: 'competitor', name: 'The Competitor', img: '/img/competitor.webp', desc: 'Peak energy & adrenaline-led discovery' }
+    ];
 
-    const updateSelection = (field: string, value: any) => {
-        setSelections(prev => ({ ...prev, [field]: value }));
-    };
-
-    const toggleVibe = (id: string) => {
-        setSelections(prev => ({
-            ...prev,
-            vibes: prev.vibes.includes(id) ? prev.vibes.filter(v => v !== id) : [...prev.vibes, id]
-        }));
+    const executeFinalProtocol = (protocol: string) => {
+        const finalData = { ...selections, protocol };
+        setIsProcessing(true);
+        setTimeout(() => {
+            navigate('/itinerary', { state: { selections: finalData } });
+        }, 3200);
     };
 
     return (
-        <div className="relative min-h-screen w-full overflow-hidden bg-[#080808] text-white font-inter">
-            {/* DYNAMIC BACKGROUND */}
-            <div className="fixed inset-0 -z-10">
-                <img 
-                    src={step === 5 ? "/img/cltconcert.avif" : "/img/cltskyline1.jpg"} 
-                    className={`w-full h-full object-cover transition-all duration-[1200ms] ${step > 0 ? 'scale-105 brightness-[0.2] blur-sm' : 'brightness-50'}`} 
-                    alt="Charlotte Backdrop" 
+        <div className="relative h-screen w-full bg-[#020202] text-white overflow-hidden font-inter">
+            
+            {/* THE SHIFTING WORLD (The Background that moves) */}
+            <motion.div 
+                animate={getWorldTransform()}
+                transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0 w-[150%] h-[150%] -left-[25%] -top-[25%] pointer-events-none"
+            >
+                {/* Tactical Grid */}
+                <div className="absolute inset-0 opacity-10" 
+                     style={{ backgroundImage: `linear-gradient(#ffffff10 1px, transparent 1px), linear-gradient(90deg, #ffffff10 1px, transparent 1px)`, backgroundSize: '80px 80px' }} 
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-[#080808]/80 to-[#080808]" />
-            </div>
+                {/* Ambient Glows that move with the world */}
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-royal-emerald/10 rounded-full blur-[120px]" />
+                <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-royal-gold/5 rounded-full blur-[150px]" />
+            </motion.div>
 
-            <div className="flex flex-col items-center justify-center min-h-screen px-6 py-20">
+            {/* CENTERED CONTENT ENGINE */}
+            <div className="relative z-10 flex items-center justify-center h-full w-full">
                 <AnimatePresence mode="wait">
                     
                     {/* STEP 0: HERO */}
                     {step === 0 && (
                         <motion.div 
-                            key="hero" 
-                            initial={{ opacity: 0, scale: 0.95 }} 
-                            animate={{ opacity: 1, scale: 1 }} 
-                            exit={{ opacity: 0, scale: 1.05 }} 
+                            key="s0"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
                             className="text-center"
                         >
-                            <h1 className="text-[14vw] md:text-[9rem] font-black leading-none mb-6 select-none font-inter tracking-tighter">
-                                <span className="text-[#00703C]">CLT</span>
-                                <span className="text-transparent" style={{ WebkitTextStroke: '1.5px #B3A369' }}>ourism</span>
+                            <h1 className="text-[10vw] font-serif-headline italic leading-none tracking-tighter">
+                                CLT<span className="text-royal-emerald">OURISM</span>
                             </h1>
-                            <div className="space-y-3 mb-12">
-                                <h2 className="text-4xl md:text-6xl font-serif italic text-[#00703C] serif-glow">Plan smarter.</h2>
-                                <h2 className="text-4xl md:text-6xl font-serif italic text-[#B3A369] serif-glow">Explore better.</h2>
-                            </div>
-                            
-                            <div className="flex flex-col items-center gap-8">
-                                <button 
-                                    onClick={() => navigate('/login')} 
-                                    className="px-16 py-6 rounded-full border-2 border-[#B3A369]/30 text-[#B3A369] tracking-[0.4em] uppercase text-sm font-bold hover:bg-[#B3A369] hover:text-black hover:scale-105 transition-all duration-500 shadow-xl font-inter"
-                                >
-                                    Get Started
-                                </button>
-
-                                <button 
-                                    onClick={() => setStep(1)} 
-                                    className="group flex flex-col items-center gap-2 transition-all"
-                                >
-                                    <span className="text-lg md:text-xl uppercase tracking-[0.3em] text-white/40 group-hover:text-white transition-colors duration-300 font-medium italic font-serif">
-                                        Or try the planner first
-                                    </span>
-                                    <div className="h-[1px] w-12 bg-[#B3A369]/30 group-hover:w-full group-hover:bg-[#B3A369] transition-all duration-500"></div>
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* STEP 1: PERSONA */}
-                    {step === 1 && (
-                        <motion.div key="persona" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-7xl">
-                            <h3 className="text-5xl text-center font-serif mb-16 italic">Who are we planning for?</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 px-4">
-                                {personas.map((p) => (
-                                    <div key={p.label} onClick={() => { updateSelection('persona', p.label); setStep(2); }} className="relative h-[480px] rounded-[2.5rem] overflow-hidden cursor-pointer group border border-white/5 hover:border-[#B3A369] transition-all duration-500 shadow-2xl">
-                                        <img src={p.img} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-90 group-hover:scale-110 transition-all duration-1000" alt={p.label} />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-                                        <div className="absolute bottom-10 left-8 right-8">
-                                            <p className="text-[#B3A369] text-[10px] tracking-[0.4em] uppercase mb-2 font-black font-inter">{p.desc}</p>
-                                            <h4 className="text-3xl md:text-4xl font-serif leading-tight break-words">{p.label}</h4>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* STEP 2: TIME SLIDER */}
-                    {step === 2 && (
-                        <motion.div key="time" className="w-full max-w-2xl text-center">
-                            <h3 className="text-5xl font-serif mb-4 italic">How long is the stay?</h3>
-                            <h4 className="text-8xl font-serif mb-4 text-[#B3A369] tracking-tighter serif-glow">
-                                {formatTime(Number(selections.hours))}
-                            </h4>
-                            <input type="range" min="1" max="168" value={selections.hours} onChange={(e) => updateSelection('hours', e.target.value)} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-uncc-green mb-8" />
-                            <div className="flex justify-between text-[11px] text-[#B3A369] uppercase tracking-widest px-2 font-black opacity-60">
-                                <span>1 Hour</span><span>1 Week</span>
-                            </div>
-                            <button onClick={() => setStep(3)} className="mt-16 px-14 py-4 rounded-full bg-uncc-green text-white font-black uppercase text-xs tracking-[0.2em] shadow-xl">Confirm Time</button>
-                        </motion.div>
-                    )}
-
-                    {/* STEP 3: VIBE CHECK */}
-                    {step === 3 && (
-                        <motion.div key="mission" className="w-full max-w-6xl text-center">
-                            <h3 className="text-5xl font-serif mb-16 italic">What's the mission?</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-16 px-4">
-                                {vibes.map((v) => (
-                                    <div key={v.id} onClick={() => toggleVibe(v.id)} className={`relative h-[500px] rounded-[4rem] overflow-hidden cursor-pointer group border-2 transition-all duration-700 shadow-2xl ${selections.vibes.includes(v.id) ? 'border-[#B3A369] scale-95 shadow-[#B3A369]/20' : 'border-white/5 opacity-80'}`}>
-                                        <img src={v.img} className="absolute inset-0 w-full h-full object-cover brightness-[0.7] group-hover:scale-110 transition-all duration-1000" alt={v.label} />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                                        <div className="absolute bottom-12 left-0 right-0 px-8 text-center">
-                                            <h4 className="text-4xl font-serif mb-3 leading-tight">{v.label}</h4>
-                                            <p className="text-uncc-gold font-inter text-[11px] tracking-[0.4em] uppercase font-black">{v.tags}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            {selections.vibes.length > 0 && <button onClick={() => setStep(4)} className="px-14 py-4 rounded-full bg-uncc-green text-white font-black uppercase text-xs tracking-widest shadow-xl">Next Step</button>}
-                        </motion.div>
-                    )}
-
-                    {/* STEP 4: PARAMETERS */}
-                    {step === 4 && (
-                        <motion.div key="logistics" className="w-full max-w-2xl text-center px-6 glass py-16 rounded-[4rem]">
-                            <h3 className="text-6xl font-serif mb-20 italic text-uncc-gold">Fine Tuning</h3>
-                            <div className="space-y-24">
-                                <div>
-                                    <div className="flex justify-between items-end mb-6 px-2">
-                                        <span className="text-xs text-uncc-green uppercase tracking-[0.4em] font-black">Radius</span>
-                                        <span className="text-5xl font-serif">{selections.radius} Mi</span>
-                                    </div>
-                                    <input type="range" min="1" max="50" value={selections.radius} onChange={(e) => updateSelection('radius', e.target.value)} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-uncc-green" />
-                                </div>
-                                <div>
-                                    <div className="flex justify-between items-end mb-6 px-2">
-                                        <span className="text-xs text-uncc-green uppercase tracking-[0.4em] font-black">Budget</span>
-                                        <span className="text-5xl font-serif">{formatCurrency(Number(selections.budget))}</span>
-                                    </div>
-                                    <input 
-                                        type="range" min="10" max="5000" step="10" 
-                                        value={selections.budget} 
-                                        onChange={(e) => updateSelection('budget', e.target.value)} 
-                                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-uncc-green" 
-                                    />
-                                    {Number(selections.budget) >= 3000 && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-uncc-gold text-[10px] font-black tracking-[0.3em] uppercase mt-6">
-                                            ✨ Platinum Experience Tier ✨
-                                        </motion.div>
-                                    )}
-                                </div>
-                            </div>
-                            <button onClick={() => setStep(5)} className="mt-24 px-16 py-5 rounded-full bg-white text-black font-black uppercase text-xs tracking-[0.4em] hover:bg-uncc-green hover:text-white transition-colors">Generate Experience</button>
-                        </motion.div>
-                    )}
-
-                    {/* STEP 5: FINAL BRIDGE */}
-                    {step === 5 && (
-                        <motion.div key="final" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center max-w-3xl glass p-20 rounded-[5rem] shadow-2xl">
-                            <h3 className="text-8xl font-serif mb-8 text-uncc-gold italic leading-tight">Ready to Roll.</h3>
-                            <p className="text-white/80 mb-14 font-inter leading-relaxed text-xl px-10">
-                                Your custom Queen City pulse is synchronized! We've mapped out the perfect {formatTime(Number(selections.hours))} journey for your {selections.persona}.
-                            </p>
+                            <p className="text-[10px] uppercase tracking-[1em] text-white/20 mt-4 mb-16">Global_Executive_Interface</p>
                             <button 
-                                onClick={() => navigate('/itinerary', { state: { selections } })} 
-                                className="px-14 py-6 rounded-full bg-uncc-green text-white font-black uppercase text-sm tracking-[0.4em] hover:scale-105 transition-all shadow-lg shadow-uncc-green/20"
+                                onClick={() => setStep(1)}
+                                className="px-16 py-5 rounded-full border border-white/10 hover:border-royal-emerald transition-all text-[11px] font-black uppercase tracking-[0.3em] bg-black/50 backdrop-blur-md"
                             >
-                                Unlock Your Dashboard
+                                Start Protocol
                             </button>
                         </motion.div>
                     )}
 
+                    {/* STEP 1: TEMPORAL SYNC */}
+                    {step === 1 && (
+                        <motion.div 
+                            key="s1"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="w-full max-w-2xl px-6 text-center"
+                        >
+                            <span className="text-royal-emerald font-black text-[10px] tracking-[0.5em] uppercase">Temporal_Parameters</span>
+                            <h2 className="text-5xl font-serif-headline italic mt-6 mb-12">When do we arrive?</h2>
+                            <div className="bg-white/5 border border-white/10 rounded-[3rem] p-12 backdrop-blur-2xl shadow-2xl">
+                                <input 
+                                    type="date" 
+                                    className="bg-transparent text-5xl font-bold outline-none text-royal-gold w-full text-center invert brightness-200" 
+                                    onChange={(e) => setSelections({...selections, arrival: e.target.value})} 
+                                />
+                                <button 
+                                    onClick={() => setStep(2)}
+                                    className="mt-12 text-royal-emerald font-black uppercase tracking-widest text-[10px] hover:text-white transition-colors"
+                                >
+                                    Define Persona →
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* STEP 2: IDENTITY MATRIX */}
+                    {step === 2 && (
+                        <motion.div 
+                            key="s2"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.05 }}
+                            className="w-full max-w-5xl px-6 text-center"
+                        >
+                            <h2 className="text-4xl font-serif-headline italic mb-16 uppercase tracking-widest">Select Operational Identity</h2>
+                            <div className="grid grid-cols-2 gap-10 h-[50vh]">
+                                {personas.map((p) => (
+                                    <motion.div 
+                                        key={p.id}
+                                        whileHover={{ y: -15, borderColor: 'rgba(0, 77, 44, 0.5)' }}
+                                        onClick={() => { setSelections({...selections, persona: p.name}); setStep(3); }}
+                                        className="group relative cursor-pointer rounded-[3rem] overflow-hidden border border-white/5 bg-zinc-900/50 backdrop-blur-md"
+                                    >
+                                        <img src={p.img} alt={p.name} className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale group-hover:grayscale-0 group-hover:opacity-80 transition-all duration-1000" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                                        <div className="absolute bottom-10 left-10 text-left">
+                                            <h3 className="text-4xl font-serif-headline italic">{p.name}</h3>
+                                            <p className="text-[10px] uppercase tracking-widest text-white/40 mt-2">{p.desc}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* STEP 3: LOGISTICS & PROTOCOL */}
+                    {step === 3 && (
+                        <motion.div 
+                            key="s3"
+                            initial={{ opacity: 0, filter: 'blur(10px)' }}
+                            animate={{ opacity: 1, filter: 'blur(0px)' }}
+                            className="w-full max-w-2xl px-6 text-center"
+                        >
+                            <h2 className="text-5xl font-serif-headline italic mb-12">Final Logistics</h2>
+                            <div className="bg-white/5 border border-white/10 rounded-[3.5rem] p-12 backdrop-blur-3xl mb-8">
+                                <div className="flex justify-between mb-8">
+                                    <span className="text-[10px] uppercase tracking-[0.3em] text-white/30 font-black">Capital Allocation</span>
+                                    <span className="text-royal-emerald font-black text-2xl tracking-tighter">${selections.budget}</span>
+                                </div>
+                                <input 
+                                    type="range" min="100" max="3000" step="100"
+                                    value={selections.budget}
+                                    onChange={(e) => setSelections({...selections, budget: parseInt(e.target.value)})}
+                                    className="w-full h-[2px] bg-white/10 accent-royal-emerald appearance-none cursor-pointer"
+                                />
+                            </div>
+                            <div className="flex gap-4">
+                                {['Leisure', 'Standard', 'High-Velocity'].map(p => (
+                                    <button 
+                                        key={p}
+                                        onClick={() => executeFinalProtocol(p)}
+                                        className="flex-1 py-6 rounded-2xl border border-white/10 hover:border-royal-emerald hover:bg-royal-emerald/5 transition-all uppercase text-[10px] font-black tracking-widest"
+                                    >
+                                        {p} Protocol
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </div>
+
+            {/* PROCESSING OVERLAY */}
+            <AnimatePresence>
+                {isProcessing && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        className="absolute inset-0 z-[100] bg-black flex flex-col items-center justify-center"
+                    >
+                        <div className="relative">
+                            <motion.div 
+                                animate={{ width: ['0%', '100%', '0%'], left: ['0%', '0%', '100%'] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                className="absolute -top-4 h-[1px] bg-royal-emerald shadow-[0_0_15px_#004D2C]"
+                            />
+                            <p className="text-royal-emerald font-mono text-[10px] tracking-[0.8em] uppercase">Processing_CLTourism_Matrix</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

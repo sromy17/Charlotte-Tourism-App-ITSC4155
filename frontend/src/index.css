@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@300;400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,33 +7,40 @@
 @layer base {
   body {
     margin: 0;
-    /* Using a slightly lifted dark background for better depth */
-    @apply bg-[#050505] text-[#F9F8F3] antialiased;
+    @apply bg-[#020202] text-[#F6F3EB] antialiased;
     font-family: 'Inter', sans-serif;
+    letter-spacing: 0.01em;
   }
 
-  /* Headlines: Serif for elegance, UI: Inter for clarity */
   h1, h2, h3, h4 {
-    font-family: 'Instrument Serif', serif;
-    @apply text-[#F9F8F3] font-normal tracking-tight leading-tight;
+    font-family: 'Playfair Display', serif;
+    @apply text-[#F6F3EB] font-medium tracking-tight leading-tight;
   }
 }
 
 @layer components {
-  /* Enhanced Glassmorphism with internal highlights */
   .glass {
-    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-2xl;
-    box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+    @apply bg-white/[0.04] backdrop-blur-2xl border border-white/15;
+    box-shadow:
+      inset 0 0.5px 0 0 rgba(255, 255, 255, 0.34),
+      0 20px 60px rgba(0, 0, 0, 0.45);
   }
 
-  /* Charlotte Safari Branding Gradient */
-  .text-gradient-gold {
-    @apply bg-gradient-to-br from-[#B3A369] via-[#F9F8F3] to-[#8E7E45] bg-clip-text text-transparent;
+  .luxury-panel {
+    @apply rounded-[28px] border bg-white/[0.035] backdrop-blur-2xl;
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow:
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.3),
+      0 12px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  .luxury-label {
+    font-family: 'IBM Plex Mono', monospace;
+    @apply text-[10px] uppercase tracking-[0.32em] text-white/60;
   }
 }
 
 @layer utilities {
-  /* Essential for that hourly weather scrollbar */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -42,19 +49,33 @@
     scrollbar-width: none;
   }
 
-  /* Ghost text for large background decorative elements */
   .text-ghost {
     color: transparent;
-    -webkit-text-stroke: 1px rgba(179, 163, 105, 0.3);
+    -webkit-text-stroke: 1px rgba(214, 192, 142, 0.28);
   }
 
-  /* Sophisticated glow for Serif headers */
   .serif-glow {
-    text-shadow: 0 0 30px rgba(179, 163, 105, 0.15);
+    text-shadow: 0 0 30px rgba(214, 192, 142, 0.12);
   }
 
-  /* Smooth transition for card hover states */
   .card-hover {
-    @apply transition-all duration-500 ease-out hover:scale-[1.02] hover:bg-white/[0.05] hover:border-[#B3A369]/30;
+    @apply transition-all duration-500 ease-out hover:scale-[1.015] hover:bg-white/[0.06] hover:border-[#d6c08e]/35;
+  }
+
+  .thin-border {
+    border-width: 0.5px;
+  }
+
+  .luxury-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .luxury-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .luxury-scroll::-webkit-scrollbar-thumb {
+    background: rgba(214, 192, 142, 0.42);
+    border-radius: 999px;
   }
 }

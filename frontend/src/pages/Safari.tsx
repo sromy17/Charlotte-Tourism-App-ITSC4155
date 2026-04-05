@@ -27,7 +27,7 @@ const experiences = [
 
 const Safari: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#020202] px-6 pb-20 pt-28 text-[#F6F3EB]">
+    <div className="min-h-[calc(100vh-7rem)] bg-[#020202] px-6 pb-20 text-[#F6F3EB]">
       <div className="mx-auto max-w-6xl">
         <header className="luxury-panel p-7">
           <p className="luxury-label text-[#79bfa0]">Discovery Studio</p>

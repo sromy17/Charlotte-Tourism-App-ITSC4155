@@ -41,7 +41,7 @@ const Home: React.FC = () => {
     };
 
     return (
-        <div className="relative h-screen w-full bg-[#020202] text-white overflow-hidden font-inter">
+        <div className="relative min-h-[calc(100vh-7rem)] w-full bg-[#020202] text-white overflow-hidden font-inter">
             
             {/* THE SHIFTING WORLD (The Background that moves) */}
             <motion.div 

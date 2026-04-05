@@ -1,8 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../state/authStore';
 
 const Navbar: React.FC = () => {
     const location = useLocation();
+    const isSignedIn = useAuthStore((state) => state.isAuthenticated);
+    const accountPath = isSignedIn ? '/profile' : '/login';
+    const accountLabel = isSignedIn ? 'Profile' : 'Sign In';
     
     return (
         <div className="fixed top-6 inset-x-0 z-[100] flex justify-center px-6">
@@ -35,9 +39,9 @@ const Navbar: React.FC = () => {
                     ))}
                 </div>
 
-                <Link to="/profile" className="flex items-center gap-4 group">
+                <Link to={accountPath} className="flex items-center gap-4 group">
                     <div className="h-px w-8 bg-white/10 group-hover:w-12 transition-all" />
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">Profile</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{accountLabel}</span>
                 </Link>
             </nav>
         </div>

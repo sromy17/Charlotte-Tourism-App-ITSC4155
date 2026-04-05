@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { interpret, InterpreterFrom } from 'xstate';
+import { SelectionHub } from '../components/SelectionHub';
+import { useAuthStore } from '../state/authStore';
 import { experienceMachine } from '../state/experienceMachine';
 import { InductionLayer } from './layers/InductionLayer';
 import { EngineLayer } from './layers/EngineLayer';
@@ -9,16 +12,26 @@ import { experienceService } from '../services/experienceService';
 import { useExperienceStore } from '../state/experienceStore';
 
 export const ExperienceShell: React.FC = () => {
+  const navigate = useNavigate();
   const [state, setState] = useState(experienceMachine.initialState);
   const serviceRef = useRef<InterpreterFrom<typeof experienceMachine> | null>(null);
   const {
     loading,
     error,
+    setNodes,
+    setActiveTask,
     setLoading,
     setError,
     setWeather,
     hydrateFromSuggestions,
   } = useExperienceStore();
+  const {
+    user,
+    isAuthenticated,
+    activeItinerary,
+    clearActiveItinerary,
+    setActiveItinerary,
+  } = useAuthStore();
 
   useEffect(() => {
     const service = interpret(experienceMachine);
@@ -49,6 +62,25 @@ export const ExperienceShell: React.FC = () => {
 
       hydrateFromSuggestions(items);
       setWeather(weather);
+      setActiveItinerary({
+        id: `itinerary-${Date.now()}`,
+        title: `${state.context.selections.persona || 'Charlotte'} Deployment`,
+        createdAt: new Date().toISOString(),
+        selections: state.context.selections,
+        nodes: items.slice(0, 8).map((item, index) => ({
+          id: String(item.id),
+          title: item.activity,
+          location: item.location,
+          cost: item.cost,
+          driveTime: item.drive_time,
+          description: item.description,
+          time: `${9 + index}:00`,
+          lane: index < 5 ? 'active' : 'discovery',
+          status: index === 0 ? 'active' : 'queued',
+        })),
+        weather,
+        status: 'active',
+      });
       setTimeout(() => send({ type: 'NEXT' }), 1200);
     } catch (generationError) {
       setError('Generation stream interrupted. Check backend/API keys and retry.');
@@ -57,6 +89,17 @@ export const ExperienceShell: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleStartNewSequence = () => {
+    clearActiveItinerary();
+    setNodes([]);
+    setActiveTask(null);
+    setWeather(null);
+    setError(null);
+    send({ type: 'RESET' });
+  };
+
+  const shouldShowSelectionHub = state.matches('induction') && isAuthenticated && Boolean(activeItinerary);
 
   const worldTransform = useMemo(() => {
     if (state.matches('induction')) {
@@ -91,14 +134,23 @@ export const ExperienceShell: React.FC = () => {
 
       <div className="relative z-10 h-full w-full p-6 sm:p-10">
         <AnimatePresence mode="wait">
-          {state.matches('induction') && (
-            <InductionLayer
-              key="induction"
-              selections={state.context.selections}
-              onChange={(payload) => send({ type: 'SET_SELECTIONS', payload })}
-              onGenerate={handleGenerate}
-            />
-          )}
+          {state.matches('induction') &&
+            (shouldShowSelectionHub && activeItinerary ? (
+              <SelectionHub
+                key="selection-hub"
+                itinerary={activeItinerary}
+                userName={user?.name}
+                onResume={() => navigate('/map')}
+                onStartNew={handleStartNewSequence}
+              />
+            ) : (
+              <InductionLayer
+                key="induction"
+                selections={state.context.selections}
+                onChange={(payload) => send({ type: 'SET_SELECTIONS', payload })}
+                onGenerate={handleGenerate}
+              />
+            ))}
 
           {state.matches('engine') && (
             <EngineLayer
@@ -115,7 +167,7 @@ export const ExperienceShell: React.FC = () => {
             <InterfaceLayer
               key="interface"
               selections={state.context.selections}
-              onReset={() => send({ type: 'RESET' })}
+              onReset={handleStartNewSequence}
             />
           )}
         </AnimatePresence>

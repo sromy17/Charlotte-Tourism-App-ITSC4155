@@ -2,7 +2,7 @@ import React from 'react';
 
 const MapView: React.FC = () => {
 	return (
-		<div className="min-h-screen bg-[#020202] px-6 pb-16 pt-28 text-[#F6F3EB]">
+		<div className="min-h-[calc(100vh-7rem)] bg-[#020202] px-6 pb-16 text-[#F6F3EB]">
 			<div className="mx-auto max-w-6xl">
 				<div className="luxury-panel p-8">
 					<p className="luxury-label text-[#79bfa0]">City Map · Preview</p>

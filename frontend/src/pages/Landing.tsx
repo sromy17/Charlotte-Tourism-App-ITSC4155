@@ -89,7 +89,7 @@ const faqs = [
 const Landing: React.FC = () => {
   return (
     <div className="bg-[#020202] text-[#F6F3EB]">
-      <section className="relative min-h-screen overflow-hidden px-6 pb-20 pt-32">
+      <section className="relative min-h-[calc(100vh-7rem)] overflow-hidden px-6 pb-20 pt-4">
         <img
           src="/img/northend.jpg"
           alt="Charlotte city atmosphere"

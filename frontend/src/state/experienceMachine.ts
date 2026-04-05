@@ -21,7 +21,7 @@ export type ExperienceEvent =
   | { type: 'SET_SELECTIONS'; payload: Partial<SelectionPayload> }
   | { type: 'GENERATE' };
 
-const defaultSelections: SelectionPayload = {
+export const defaultSelections: SelectionPayload = {
   arrival: '',
   persona: '',
   budget: 500,
@@ -31,51 +31,53 @@ const defaultSelections: SelectionPayload = {
 
 export const experienceMachine = createMachine<ExperienceContext, ExperienceEvent>(
   {
-  id: 'experience',
-  initial: 'induction',
-  context: {
-    selections: defaultSelections,
-  },
-  states: {
-    induction: {
-      on: {
-        SET_SELECTIONS: {
-          actions: 'assignSelections',
+    id: 'experience',
+    initial: 'induction',
+    context: {
+      selections: defaultSelections,
+    },
+    on: {
+      RESET: {
+        target: 'induction',
+        actions: 'resetSelections',
+      },
+    },
+    states: {
+      induction: {
+        on: {
+          SET_SELECTIONS: {
+            actions: 'assignSelections',
+          },
+          GENERATE: {
+            cond: 'canGenerate',
+            target: 'engine',
+          },
+          NEXT: {
+            target: 'engine',
+          },
         },
-        GENERATE: {
-          cond: 'canGenerate',
-          target: 'engine',
+      },
+      engine: {
+        on: {
+          BACK: {
+            target: 'induction',
+          },
+          NEXT: {
+            target: 'interface',
+          },
         },
-        NEXT: {
-          target: 'engine',
+      },
+      interface: {
+        on: {
+          BACK: {
+            target: 'induction',
+          },
+          SET_SELECTIONS: {
+            actions: 'assignSelections',
+          },
         },
       },
     },
-    engine: {
-      on: {
-        BACK: {
-          target: 'induction',
-        },
-        NEXT: {
-          target: 'interface',
-        },
-      },
-    },
-    interface: {
-      on: {
-        BACK: {
-          target: 'induction',
-        },
-        RESET: {
-          target: 'induction',
-          actions: 'resetSelections',
-        },
-        SET_SELECTIONS: {
-          actions: 'assignSelections',
-        },
-      },
-    },
-  },
   },
   {
     actions: {

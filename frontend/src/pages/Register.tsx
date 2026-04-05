@@ -31,7 +31,7 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow text-gray-900">
+    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow text-gray-900">
       <h2 className="text-2xl font-semibold mb-4 text-gray-900">Create an account</h2>
       <form onSubmit={handleCreate} noValidate>
         <label className="block mb-3">

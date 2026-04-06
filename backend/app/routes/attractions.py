@@ -10,6 +10,40 @@ from app.controllers import attractions_controller
 
 router = APIRouter()
 
+@router.get("/", tags=["attractions"])
+def get_top_attractions():
+    """Return a mock list of top Charlotte, NC tourist attractions."""
+    return [
+        {
+            "id": 1,
+            "name": "NASCAR Hall of Fame",
+            "category": "Culture",
+            "description": "Interactive exhibits celebrating motorsports history and legends.",
+            "image_url": "https://via.placeholder.com/400x300?text=NASCAR+Hall+of+Fame"
+        },
+        {
+            "id": 2,
+            "name": "Freedom Park",
+            "category": "Entertainment",
+            "description": "Lush green space for relaxation, sports, and local festivals.",
+            "image_url": "https://via.placeholder.com/400x300?text=Freedom+Park"
+        },
+        {
+            "id": 3,
+            "name": "Discovery Place Science",
+            "category": "Culture",
+            "description": "Hands-on science center with planetarium, live labs, and family exhibits.",
+            "image_url": "https://via.placeholder.com/400x300?text=Discovery+Place+Science"
+        },
+        {
+            "id": 4,
+            "name": "U.S. National Whitewater Center",
+            "category": "Entertainment",
+            "description": "Outdoor adventure hub with rafting, zip lining, climbing, and trails.",
+            "image_url": "https://via.placeholder.com/400x300?text=Whitewater+Center"
+        }
+    ]
+
 # Config
 TM_KEY = os.getenv("TICKETMASTER_API_KEY")
 TT_KEY = os.getenv("TOMTOM_API_KEY")

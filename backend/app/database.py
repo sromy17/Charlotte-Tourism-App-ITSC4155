@@ -5,6 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.config import get_settings
 
 settings = get_settings()
+<<<<<<< HEAD
+=======
+try:
+    engine = create_engine(settings.database_url, pool_pre_ping=True)
+    # make sure DB is reachable at startup, otherwise fallback to local SQLite
+    with engine.connect() as conn:
+        pass
+except Exception:
+    engine = create_engine("sqlite:///./cltourism.db", connect_args={"check_same_thread": False})
+>>>>>>> 60d373a (Updated weather route to fetch live OpenWeather API data)
 
 # ----- SYNC ENGINE (for regular SQLAlchemy operations if needed) -----
 engine = create_engine(settings.database_url, pool_pre_ping=True)

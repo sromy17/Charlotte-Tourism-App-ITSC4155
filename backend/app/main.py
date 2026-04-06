@@ -9,23 +9,25 @@ from app.routes.weather import router as weather_router
 
 from app.database import engine, Base
 import app.models  # This loads your User and Attraction blueprints
+import app.models  # This loads your User and Attraction blueprints
 
 <<<<<<< HEAD
-# Create tables if they don't exist
-Base.metadata.create_all(bind=engine, checkfirst=True)
-=======
 # This command tells Postgres (or fallback DB) to create the tables if they don't exist yet!
 try:
     Base.metadata.create_all(bind=engine)
 except Exception:
     # In development we may not have a DB server running; fallback to SQLite automatically.
     pass
->>>>>>> 60d373a (Updated weather route to fetch live OpenWeather API data)
+=======
+# Create tables if they don't exist
+Base.metadata.create_all(bind=engine, checkfirst=True)
+>>>>>>> e10eae5ee6d9f10c29082034da0708eb2436e6de
 
 settings = get_settings()
 
 app = FastAPI(title="CLTourism API", version="1.0.0")
 
+# Permissive CORS for development
 # Permissive CORS for development
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include your routers
 # Include your routers
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(weather_router, prefix="/api/weather", tags=["weather"])

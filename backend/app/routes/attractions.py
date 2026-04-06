@@ -1,8 +1,12 @@
 import random
 import requests
 import os
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from urllib.parse import quote
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.controllers import attractions_controller
 
 router = APIRouter()
 
@@ -22,90 +26,124 @@ LOCAL_GEMS = [
     {"name": "Romare Bearden Park", "lat": 35.2285, "lon": -80.8465, "vibe": "outdoor", "type": "Park", "rating": 4.8}
 ]
 
+
 def get_eta(lat, lon):
     try:
         url = f"https://api.tomtom.com/routing/1/calculateRoute/{START_COORDS}:{lat},{lon}/json?key={TT_KEY}&traffic=true"
         r = requests.get(url).json()
         return round(r['routes'][0]['summary']['travelTimeInSeconds'] / 60)
-    except: return random.randint(10, 20)
+    except:
+        return random.randint(10, 20)
+
 
 @router.post("/generate")
 async def generate_itinerary(user_data: dict):
     query = user_data.get("query", "").strip()
     target_date = user_data.get("date")
     persona = user_data.get("persona", "The Soloist")
-    
-    # 1. Weather Awareness
+
+    # Weather Awareness
     vibe = "outdoor"
     try:
         w_url = f"https://api.openweathermap.org/data/2.5/forecast?q=Charlotte&appid={OWM_KEY}&units=imperial"
         w_res = requests.get(w_url).json()
-        for e in w_res.get('list', []):
-            if target_date in e['dt_txt']:
-                if any(x in e['weather'][0]['main'].lower() for x in ['rain', 'snow', 'storm']) or e['main']['temp'] < 48:
+
+        for e in w_res.get("list", []):
+            if target_date in e["dt_txt"]:
+                if (
+                    any(x in e["weather"][0]["main"].lower() for x in ["rain", "snow", "storm"])
+                    or e["main"]["temp"] < 48
+                ):
                     vibe = "indoor"
                 break
-    except: pass
+    except:
+        pass
 
     itinerary = []
 
-    # 2. THE SEARCH LOGIC (Custom Query or Category Search)
+    # Search Mode
     if query:
-        # Search mode: Find specific things via TomTom
         search_url = f"https://api.tomtom.com/search/2/search/{quote(query)}.json?key={TT_KEY}&lat=35.2271&lon=-80.8431&radius=15000&limit=12"
-        results = requests.get(search_url).json().get('results', [])
+        results = requests.get(search_url).json().get("results", [])
+
         for r in results:
-            eta = get_eta(r['position']['lat'], r['position']['lon'])
+            eta = get_eta(r["position"]["lat"], r["position"]["lon"])
+
             itinerary.append({
-                "id": r['id'],
-                "activity": r['poi'].get('name', query),
-                "location": r['address']['freeformAddress'],
+                "id": r["id"],
+                "activity": r["poi"].get("name", query),
+                "location": r["address"]["freeformAddress"],
                 "drive_time": f"{eta} min",
                 "cost": "$$" if "restaurant" in str(r).lower() else "$",
                 "description": f"Custom result for your search: '{query}'."
             })
+
     else:
-        # Suggestion mode: Mix Ticketmaster + TomTom + Gems
-        # TICKETMASTER (Big Events)
+        # Ticketmaster Events
         tm_url = f"https://app.ticketmaster.com/discovery/v2/events.json?apikey={TM_KEY}&city=Charlotte&size=5"
         tm_res = requests.get(tm_url).json()
+
         if "_embedded" in tm_res:
-            for ev in tm_res['_embedded']['events']:
-                v = ev['_embedded']['venues'][0]
+            for ev in tm_res["_embedded"]["events"]:
+                v = ev["_embedded"]["venues"][0]
+
                 itinerary.append({
                     "id": f"tm-{ev['id']}",
-                    "activity": ev['name'],
-                    "location": v['name'],
+                    "activity": ev["name"],
+                    "location": v["name"],
                     "drive_time": f"{get_eta(v['location']['latitude'], v['location']['longitude'])} min",
                     "cost": "$$$",
                     "description": f"Featured Event! Perfect for {persona}."
                 })
 
-        # TOMTOM (POI Discovery)
-        cat = "9376" if vibe == "indoor" else "8120" # Museums vs Parks
+        # TomTom Category Search
+        cat = "9376" if vibe == "indoor" else "8120"
+
         tt_url = f"https://api.tomtom.com/search/2/categorySearch/charlotte.json?key={TT_KEY}&categorySet={cat}&limit=6"
-        tt_res = requests.get(tt_url).json().get('results', [])
+        tt_res = requests.get(tt_url).json().get("results", [])
+
         for r in tt_res:
             itinerary.append({
-                "id": r['id'],
-                "activity": r['poi']['name'],
-                "location": r['address']['freeformAddress'],
+                "id": r["id"],
+                "activity": r["poi"]["name"],
+                "location": r["address"]["freeformAddress"],
                 "drive_time": f"{get_eta(r['position']['lat'], r['position']['lon'])} min",
                 "cost": "$",
                 "description": f"Top-rated {vibe} spot in Charlotte."
             })
 
-    # 3. FILL THE GAP (Always ensure 10+ items)
+    # Fill Remaining With Local Gems
     while len(itinerary) < 12:
         gem = random.choice(LOCAL_GEMS)
+
         itinerary.append({
             "id": f"gem-{random.randint(1,1000)}",
-            "activity": gem['name'],
-            "location": gem['type'],
+            "activity": gem["name"],
+            "location": gem["type"],
             "drive_time": f"{get_eta(gem['lat'], gem['lon'])} min",
             "cost": "$$",
             "description": f"Editor's Choice: ⭐ {gem['rating']}/5. Essential Charlotte experience."
         })
 
     random.shuffle(itinerary)
-    return itinerary[:15] # Return a rich list
+
+    return itinerary[:15]
+
+
+# ==========================
+# DATABASE ATTRACTION ROUTES
+# ==========================
+
+@router.get("/attractions")
+async def list_attractions(db: Session = Depends(get_db)):
+    return await attractions_controller.get_all_attractions(db)
+
+
+@router.get("/attractions/{id}")
+async def get_attraction(id: int, db: Session = Depends(get_db)):
+    return await attractions_controller.get_attraction_by_id(db, id)
+
+
+@router.post("/attractions")
+async def create_attraction(attraction: dict, db: Session = Depends(get_db)):
+    return await attractions_controller.create_attraction(db, attraction)

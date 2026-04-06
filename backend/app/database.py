@@ -1,31 +1,36 @@
 from typing import Generator
-
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
-
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.config import get_settings
 
-# SQLAlchemy engine for database connection
 settings = get_settings()
-engine = create_engine(settings.database_url, pool_pre_ping=True)
 
-# SessionLocal factory for database sessions
+# ----- SYNC ENGINE (for regular SQLAlchemy operations if needed) -----
+engine = create_engine(settings.database_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for declarative models
+# ----- ASYNC ENGINE (for async routes) -----
+async_engine = create_async_engine(settings.database_url_async, pool_pre_ping=True)
+AsyncSessionLocal = sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
 Base = declarative_base()
 
 
-def get_db() -> Generator[Session, None, None]:
-    """
-    Dependency that provides a database session.
-
-    Yields:
-            Session: SQLAlchemy database session
-    """
+# Dependency for sync DB
+def get_db() -> Generator:
     db = SessionLocal()
     try:
         yield db
     finally:
-        # Always close the session to avoid connection leaks
         db.close()
+
+
+# Dependency for async DB
+async def get_async_db() -> AsyncSession:
+    async with AsyncSessionLocal() as session:
+        yield session

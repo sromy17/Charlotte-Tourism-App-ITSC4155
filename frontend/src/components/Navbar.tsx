@@ -1,55 +1,50 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../state/authStore';
 
 const Navbar: React.FC = () => {
+    const location = useLocation();
+    const isSignedIn = useAuthStore((state) => state.isAuthenticated);
+    const accountPath = isSignedIn ? '/profile' : '/login';
+    const accountLabel = isSignedIn ? 'Profile' : 'Sign In';
+    
     return (
-        <nav className="sticky top-0 z-50 bg-[#080808]/90 backdrop-blur-xl border-b border-white/10">
-            {/* Elegant Top Gradient Line */}
-            <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#00703C] to-[#B3A369] opacity-50"></div>
-            
-            <div className="container mx-auto px-6">
-                <div className="flex justify-between items-center h-20">
-                    
-                    {/* Logo: Mixing the Serif vibe with Bold UI */}
-                    <Link to="/" className="group relative flex items-center gap-3">
-                        <div className="absolute -inset-2 bg-[#00703C]/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        <span className="text-3xl relative">🏙️</span>
-                        <div className="relative flex flex-col tracking-tighter">
-                            <span className="text-2xl font-black leading-none font-inter">
-                                <span className="text-[#00703C]">CLT</span>
-                                <span className="text-[#B3A369]">ourism</span>
-                            </span>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1 font-inter">Queen City</span>
-                        </div>
-                    </Link>
+        <div className="fixed top-6 inset-x-0 z-[100] flex justify-center px-6">
+            <nav className="relative flex items-center justify-between w-full max-w-7xl h-16 px-8 rounded-full border thin-border border-white/20 bg-black/35 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.45)] overflow-hidden">
+                <div className="absolute inset-0 border thin-border border-[#004D2C]/35 rounded-full animate-border-trace pointer-events-none" />
 
-                    {/* Navigation: Clean Inter Font */}
-                    <div className="hidden md:flex items-center space-x-10">
-                        {[
-                            { name: 'Home', path: '/' },
-                            { name: 'Map', path: '/map' },
-                            { name: 'Itinerary', path: '/itinerary' },
-                            { name: 'Login', path: '/login' }
-                        ].map((item) => (
-                            <Link
-                                key={item.name}
-                                to={item.path}
-                                className="relative text-slate-400 hover:text-white font-bold text-xs uppercase tracking-widest group transition-colors duration-300 font-inter"
-                            >
-                                {item.name}
-                                <span className="absolute -bottom-2 left-0 w-0 h-0.5 bg-[#00703C] transition-all duration-300 group-hover:w-full"></span>
-                            </Link>
-                        ))}
-                        
-                        {/* Profile Button - Standout Look */}
-                        <Link to="/profile" className="relative px-6 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all duration-300 group overflow-hidden border border-white/10 font-inter">
-                            <span className="absolute inset-0 bg-slate-800 group-hover:bg-[#00703C] transition-colors duration-500"></span>
-                            <span className="relative z-10 text-slate-200 group-hover:text-white">Profile</span>
+                <Link to="/" className="flex items-center gap-2 group">
+                    <div className="w-2 h-2 rounded-full bg-royal-emerald group-hover:shadow-[0_0_15px_#004D2C] transition-all" />
+                    <span className="text-sm font-semibold uppercase tracking-[0.34em] font-inter text-[#F6F3EB]">
+                        CLT<span className="text-fairway-gold">ourism</span>
+                    </span>
+                </Link>
+
+                <div className="hidden md:flex items-center gap-8">
+                    {[
+                        { name: 'Get Started', path: '/plan' },
+                        { name: 'Experiences', path: '/safari' },
+                        { name: 'City Map', path: '/map' },
+                        { name: 'Itinerary', path: '/itinerary' }
+                    ].map((item) => (
+                        <Link
+                            key={item.name}
+                            to={item.path}
+                            className={`text-[10px] uppercase tracking-[0.28em] font-semibold transition-all hover:text-fairway-gold ${
+                                location.pathname === item.path ? 'text-royal-emerald' : 'text-white/40'
+                            }`}
+                        >
+                            {item.name}
                         </Link>
-                    </div>
+                    ))}
                 </div>
-            </div>
-        </nav>
+
+                <Link to={accountPath} className="flex items-center gap-4 group">
+                    <div className="h-px w-8 bg-white/10 group-hover:w-12 transition-all" />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{accountLabel}</span>
+                </Link>
+            </nav>
+        </div>
     );
 };
 

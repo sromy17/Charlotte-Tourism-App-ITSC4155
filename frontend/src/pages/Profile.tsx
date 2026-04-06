@@ -162,7 +162,7 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 p-6 bg-white/5 rounded-lg backdrop-blur-sm">
+    <div className="max-w-3xl mx-auto p-6 bg-white/5 rounded-lg backdrop-blur-sm">
       <h1 className="text-2xl font-bold mb-6 text-white">Profile</h1>
 
       <div className="flex gap-8 items-start">

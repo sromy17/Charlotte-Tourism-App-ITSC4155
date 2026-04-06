@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     """
 
     database_url: str
+    database_url_async: str
     secret_key: str
     algorithm: str
     access_token_expires_minutes: int

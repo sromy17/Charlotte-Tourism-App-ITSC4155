@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.user import User
 
 router = APIRouter()
@@ -41,9 +42,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ----------- ROUTES -----------
 
 @router.post("/register")
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_async_db)):
     # Check if user already exists
-    existing_user = db.query(User).filter(User.email == payload.email).first()
+    result = await db.execute(select(User).where(User.email == payload.email))
+    existing_user = result.scalar_one_or_none()
+    
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -59,8 +62,8 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
     # Save to DB
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
 
     return {
         "message": "User created successfully",
@@ -70,9 +73,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+async def login(payload: LoginRequest, db: AsyncSession = Depends(get_async_db)):
     # Find user
-    user = db.query(User).filter(User.email == payload.email).first()
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=400, detail="Invalid email or password")

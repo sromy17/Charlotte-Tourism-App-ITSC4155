@@ -11,17 +11,17 @@ from app.database import engine, Base
 import app.models  # This loads your User and Attraction blueprints
 import app.models  # This loads your User and Attraction blueprints
 
-<<<<<<< HEAD
+
 # This command tells Postgres (or fallback DB) to create the tables if they don't exist yet!
 try:
     Base.metadata.create_all(bind=engine)
 except Exception:
     # In development we may not have a DB server running; fallback to SQLite automatically.
     pass
-=======
+
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine, checkfirst=True)
->>>>>>> e10eae5ee6d9f10c29082034da0708eb2436e6de
+
 
 settings = get_settings()
 

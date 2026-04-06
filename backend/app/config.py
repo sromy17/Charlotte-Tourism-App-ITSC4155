@@ -9,9 +9,10 @@ class Settings(BaseSettings):
     """
 
     database_url: str
+    database_url_async: str
     secret_key: str
     algorithm: str
-    access_token_expires_minutes: int
+    access_token_expire_minutes: int
     openweather_api_key: str
     yelp_api_key: str
     ticketmaster_api_key: str

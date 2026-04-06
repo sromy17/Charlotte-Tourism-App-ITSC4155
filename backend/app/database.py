@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.config import get_settings
 
 settings = get_settings()
-<<<<<<< HEAD
+
 try:
     engine = create_engine(settings.database_url, pool_pre_ping=True)
     # make sure DB is reachable at startup, otherwise fallback to local SQLite
@@ -15,8 +15,7 @@ try:
         pass
 except Exception:
     engine = create_engine("sqlite:///./cltourism.db", connect_args={"check_same_thread": False})
-=======
->>>>>>> e10eae5ee6d9f10c29082034da0708eb2436e6de
+
 
 # ----- SYNC ENGINE (for regular SQLAlchemy operations if needed) -----
 engine = create_engine(settings.database_url, pool_pre_ping=True)
@@ -46,8 +45,8 @@ Base = declarative_base()
 # Dependency for sync DB
 def get_db() -> Generator:
 # Dependency for sync DB
-def get_db() -> Generator:
-    db = SessionLocal()
+    def get_db() -> Generator:
+        db = SessionLocal()
     try:
         yield db
     finally:

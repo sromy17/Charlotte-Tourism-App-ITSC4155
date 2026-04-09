@@ -113,8 +113,12 @@ export const ExperienceShell: React.FC = () => {
     return { x: '-10%', y: '6%', rotate: -1.6 };
   }, [state]);
 
+  const shellLayoutClassName = state.matches('induction')
+    ? 'relative min-h-[calc(100vh-72px)] overflow-x-hidden bg-[#020202] text-[#F9F8F3]'
+    : 'relative h-[calc(100vh-72px)] min-h-[720px] overflow-hidden bg-[#020202] text-[#F9F8F3]';
+
   return (
-    <div className="relative h-[calc(100vh-72px)] min-h-[720px] overflow-hidden bg-[#020202] text-[#F9F8F3]">
+    <div className={shellLayoutClassName}>
       <motion.div
         animate={worldTransform}
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
@@ -132,7 +136,9 @@ export const ExperienceShell: React.FC = () => {
         <div className="absolute bottom-[14%] right-[20%] h-[420px] w-[420px] rounded-full bg-[#004D2C]/12 blur-[120px]" />
       </motion.div>
 
-      <div className="relative z-10 h-full w-full p-6 sm:p-10">
+      <div
+        className={`relative z-10 w-full ${state.matches('induction') ? 'px-6 pb-14 pt-6 sm:px-8 lg:px-10' : 'h-full p-6 sm:p-10'}`}
+      >
         <AnimatePresence mode="wait">
           {state.matches('induction') &&
             (shouldShowSelectionHub && activeItinerary ? (

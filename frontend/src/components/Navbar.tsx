@@ -1,16 +1,23 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../state/authStore';
 
 const Navbar: React.FC = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const isSignedIn = useAuthStore((state) => state.isAuthenticated);
+    const signOut = useAuthStore((state) => state.signOut);
     const accountPath = isSignedIn ? '/profile' : '/login';
     const accountLabel = isSignedIn ? 'Profile' : 'Sign In';
+
+    const handleSignOut = () => {
+        signOut();
+        navigate('/');
+    };
     
     return (
         <div className="fixed top-6 inset-x-0 z-[100] flex justify-center px-6">
-            <nav className="relative flex items-center justify-between w-full max-w-7xl h-16 px-8 rounded-full border thin-border border-white/20 bg-black/35 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.45)] overflow-hidden">
+            <nav className="relative flex items-center justify-between w-full max-w-7xl h-16 px-5 sm:px-8 rounded-full border thin-border border-white/20 bg-black/35 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.45)] overflow-hidden">
                 <div className="absolute inset-0 border thin-border border-[#004D2C]/35 rounded-full animate-border-trace pointer-events-none" />
 
                 <Link to="/" className="flex items-center gap-2 group">
@@ -39,10 +46,22 @@ const Navbar: React.FC = () => {
                     ))}
                 </div>
 
-                <Link to={accountPath} className="flex items-center gap-4 group">
-                    <div className="h-px w-8 bg-white/10 group-hover:w-12 transition-all" />
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{accountLabel}</span>
-                </Link>
+                <div className="flex items-center gap-3 sm:gap-4">
+                    {isSignedIn && (
+                        <button
+                            type="button"
+                            onClick={handleSignOut}
+                            className="rounded-full border border-white/20 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em] text-white/75 transition hover:border-[#d6c08e]/45 hover:text-[#F6F3EB]"
+                        >
+                            Sign Out
+                        </button>
+                    )}
+
+                    <Link to={accountPath} className="flex items-center gap-4 group">
+                        <div className="h-px w-8 bg-white/10 group-hover:w-12 transition-all" />
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{accountLabel}</span>
+                    </Link>
+                </div>
             </nav>
         </div>
     );

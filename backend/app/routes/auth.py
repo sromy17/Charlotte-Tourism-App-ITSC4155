@@ -4,10 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from typing import Optional
+from datetime import datetime, timedelta, timezone
+from jose import jwt
 from app.database import get_async_db
 from app.models.user import User
+from app.config import get_settings
 
 router = APIRouter()
+settings = get_settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -37,6 +41,35 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+
+def create_access_token(user_id: int) -> str:
+    """
+    Generate a JWT access token with expiration.
+    
+    Args:
+        user_id: The user's database ID
+        
+    Returns:
+        Encoded JWT token string
+    """
+    # Calculate expiration time
+    expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
+    expire = datetime.now(timezone.utc) + expires_delta
+    
+    # Create token payload
+    to_encode = {
+        "sub": str(user_id),
+        "exp": expire,
+    }
+    
+    # Encode and return JWT
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.secret_key,
+        algorithm=settings.algorithm
+    )
+    return encoded_jwt
 
 
 # ----------- ROUTES -----------
@@ -81,15 +114,22 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_async_db))
     if not user:
         raise HTTPException(status_code=400, detail="Invalid email or password")
 
-    # Verify password
-    if not verify_password(payload.password, user.hashed_password):
+    # Verify password - check for null hashed_password first
+    if not user.hashed_password or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid email or password")
 
-    # For now just return success (later you'll add JWT)
+    # Generate JWT token
+    access_token = create_access_token(user.id)
+
+    # Return response in format expected by frontend
     return {
         "message": "Login successful",
-        "user_id": user.id,
-        "email": user.email
+        "token": access_token,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.full_name or user.email.split('@')[0]
+        }
     }
 
 

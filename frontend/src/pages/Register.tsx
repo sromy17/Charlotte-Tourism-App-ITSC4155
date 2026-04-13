@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
 const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
@@ -20,14 +21,27 @@ const Register: React.FC = () => {
 
   const allValid = emailValid && passwordLengthValid && passwordUpperValid && passwordSpecialValid && nameValid;
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ name: true, email: true, password: true });
     if (!allValid) return;
 
-    // TODO: call backend register API
-    // For now navigate to home as if registration succeeded
-    navigate('/');
+    try {
+      // Calling the backend and passing 'name' as 'full_name' to prevent the 422 error
+      const response = await axios.post('http://localhost:8000/api/auth/register', {
+        full_name: name, 
+        email: email, 
+        password: password
+      });
+
+      console.log("Registration successful!", response.data);
+      
+      // Navigate to the home page or login page after successful registration
+      navigate('/');
+    } catch (error) {
+      console.error("Registration failed:", error);
+      // Optional: You could add a state here to show an error message on the UI!
+    }
   };
 
   return (

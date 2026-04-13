@@ -38,3 +38,5 @@ Thumbs.db
 
 # Docker / logs
 *.log
+node_modules
+node_modules

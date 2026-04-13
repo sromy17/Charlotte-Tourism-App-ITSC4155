@@ -22,8 +22,9 @@ export const ExperienceShell: React.FC = () => {
     setActiveTask,
     setLoading,
     setError,
+    setNoResultsMessage,
     setWeather,
-    hydrateFromSuggestions,
+    hydrateFromRecommendations,
   } = useExperienceStore();
   const {
     user,
@@ -52,38 +53,54 @@ export const ExperienceShell: React.FC = () => {
   const handleGenerate = async () => {
     send({ type: 'GENERATE' });
     setError(null);
+    setNoResultsMessage(null);
     setLoading(true);
 
     try {
-      const [items, weather] = await Promise.all([
-        experienceService.generateSuggestions(state.context.selections),
+      const [recommendations, weather] = await Promise.all([
+        experienceService.generateRecommendations(state.context.selections),
         experienceService.getForecast(),
       ]);
 
-      hydrateFromSuggestions(items);
+      hydrateFromRecommendations(recommendations);
       setWeather(weather);
+
+      const combinedItems = [
+        ...recommendations.events,
+        ...recommendations.restaurants,
+        ...recommendations.activities,
+      ];
+
       setActiveItinerary({
         id: `itinerary-${Date.now()}`,
         title: `${state.context.selections.persona || 'Charlotte'} Deployment`,
         createdAt: new Date().toISOString(),
         selections: state.context.selections,
-        nodes: items.slice(0, 8).map((item, index) => ({
+        nodes: combinedItems.slice(0, 8).map((item, index) => ({
           id: String(item.id),
-          title: item.activity,
+          title: item.name,
           location: item.location,
-          cost: item.cost,
-          driveTime: item.drive_time,
+          cost: item.price || 'Price unavailable',
+          driveTime: 'ETA varies',
           description: item.description,
-          time: `${9 + index}:00`,
+          time: item.datetime ? item.datetime.replace('T', ' ') : `${9 + index}:00`,
           lane: index < 5 ? 'active' : 'discovery',
           status: index === 0 ? 'active' : 'queued',
         })),
+        recommendations,
         weather,
         status: 'active',
       });
+
+      if (combinedItems.length === 0) {
+        setNoResultsMessage('No recommendations matched your selected vibe, date, and budget. Try a wider budget or a nearby date.');
+      }
+
       setTimeout(() => send({ type: 'NEXT' }), 1200);
-    } catch (generationError) {
-      setError('Generation stream interrupted. Check backend/API keys and retry.');
+    } catch (generationError: any) {
+      const apiMessage = generationError?.response?.data?.detail;
+      const fallback = 'Planner generation failed or timed out. Please retry in a moment.';
+      setError(typeof apiMessage === 'string' ? apiMessage : fallback);
       console.error(generationError);
     } finally {
       setLoading(false);
@@ -96,6 +113,7 @@ export const ExperienceShell: React.FC = () => {
     setActiveTask(null);
     setWeather(null);
     setError(null);
+    setNoResultsMessage(null);
     send({ type: 'RESET' });
   };
 

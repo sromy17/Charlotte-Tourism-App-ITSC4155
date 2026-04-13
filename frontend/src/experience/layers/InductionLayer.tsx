@@ -12,24 +12,28 @@ const personas = [
   {
     id: 'social',
     name: 'Social Weekend',
+    categoryKey: 'social-weekend',
     description: 'Live atmosphere, game-day energy, and vibrant hotspots.',
     image: '/img/cltfans.jpg',
   },
   {
     id: 'leisure',
-    name: 'Leisure & Luxury',
+    name: 'Leisure and Luxury',
+    categoryKey: 'leisure-and-luxury',
     description: 'Beautiful spaces, relaxed pace, and polished experiences.',
     image: '/img/cltgolf.jpg',
   },
   {
     id: 'food',
-    name: 'Food & Culture',
+    name: 'Food and Culture',
+    categoryKey: 'food-and-culture',
     description: 'Curated culinary spots, local flavor, and creative districts.',
     image: '/img/beergarden.jpg',
   },
   {
     id: 'city',
     name: 'City Explorer',
+    categoryKey: 'city-explorer',
     description: 'A balanced Charlotte mix from skyline to neighborhoods.',
     image: '/img/optimist1.jpg',
   },
@@ -137,6 +141,7 @@ export const InductionLayer: React.FC<Props> = ({ selections, onChange, onGenera
   };
 
   const canMoveBackward = startOfMonth(visibleMonth).getTime() > startOfMonth(today).getTime();
+  const isReadyToGenerate = Boolean(selections.category && selections.arrival && selections.budget > 0);
 
   return (
     <motion.section
@@ -159,7 +164,7 @@ export const InductionLayer: React.FC<Props> = ({ selections, onChange, onGenera
 
             <div className="mt-6 flex flex-wrap gap-2">
               <span className="rounded-full border border-[#79bfa0]/35 bg-[#004D2C]/20 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#cde7da]">
-                {selections.persona || 'Choose a persona'}
+                {selections.persona || 'Choose a vibe'}
               </span>
               <span className="rounded-full border border-white/15 bg-white/[0.03] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-white/70">
                 {selectedStart && selectedEnd
@@ -204,7 +209,7 @@ export const InductionLayer: React.FC<Props> = ({ selections, onChange, onGenera
                 viewport={{ once: true, amount: 0.25 }}
                 transition={{ delay: index * 0.06, duration: 0.35 }}
                 onClick={() => {
-                  onChange({ persona: persona.name });
+                  onChange({ persona: persona.name, category: persona.categoryKey });
                   scrollTo(dateRef);
                 }}
                 className={`luxury-panel overflow-hidden rounded-[30px] text-left transition-all duration-300 ${
@@ -383,9 +388,10 @@ export const InductionLayer: React.FC<Props> = ({ selections, onChange, onGenera
             </p>
             <button
               onClick={onGenerate}
+              disabled={!isReadyToGenerate}
               className="mt-6 w-full rounded-full border border-[#79bfa0] bg-[#004D2C]/45 px-7 py-3 font-mono text-[11px] uppercase tracking-[0.23em] hover:bg-[#004D2C]/65"
             >
-              Build My Charlotte Day
+              {isReadyToGenerate ? 'Build My Charlotte Day' : 'Choose vibe, date, and budget to continue'}
             </button>
           </div>
         </div>

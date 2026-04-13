@@ -1,6 +1,6 @@
 import api from './api';
 import { SelectionPayload } from '../state/experienceMachine';
-import { SuggestionPayload, WeatherSnapshot } from '../state/experienceStore';
+import { PlannerRecommendationsResponse, WeatherSnapshot } from '../state/experienceStore';
 
 const getTripLengthDays = (startDate: string, endDate: string) => {
   if (!startDate || !endDate) return 1;
@@ -13,20 +13,22 @@ const getTripLengthDays = (startDate: string, endDate: string) => {
 };
 
 const toAttractionsPayload = (selection: SelectionPayload) => ({
-  query: '',
+  category: selection.category,
   date: selection.arrival,
+  budget: selection.budget,
   start_date: selection.arrival,
   end_date: selection.endDate,
-  date_range_days: getTripLengthDays(selection.arrival, selection.endDate),
   persona: selection.persona,
-  budget: selection.budget,
   hours: selection.hours,
   protocol: selection.protocol,
+  preferences: {
+    date_range_days: getTripLengthDays(selection.arrival, selection.endDate),
+  },
 });
 
 export const experienceService = {
-  async generateSuggestions(selection: SelectionPayload): Promise<SuggestionPayload[]> {
-    const response = await api.post<SuggestionPayload[]>('/api/attractions/generate', toAttractionsPayload(selection));
+  async generateRecommendations(selection: SelectionPayload): Promise<PlannerRecommendationsResponse> {
+    const response = await api.post<PlannerRecommendationsResponse>('/api/attractions/recommendations', toAttractionsPayload(selection));
     return response.data;
   },
 

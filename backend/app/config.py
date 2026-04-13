@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,7 +20,15 @@ class Settings(BaseSettings):
     tomtom_api_key: str
     frontend_url: str
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    # NEW (fix your error)
+    eventbrite_api_key: Optional[str] = None
+    hotel_api_key: Optional[str] = None
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # 🔥 prevents this error in the future
+    )
 
 
 @lru_cache()

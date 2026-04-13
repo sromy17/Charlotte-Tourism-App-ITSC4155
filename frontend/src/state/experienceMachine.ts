@@ -6,6 +6,7 @@ export interface SelectionPayload {
   arrival: string;
   endDate: string;
   persona: string;
+  category: string;
   budget: number;
   hours: number;
   protocol: string;
@@ -26,6 +27,7 @@ export const defaultSelections: SelectionPayload = {
   arrival: '',
   endDate: '',
   persona: '',
+  category: '',
   budget: 500,
   hours: 24,
   protocol: 'Balanced',
@@ -100,7 +102,7 @@ export const experienceMachine = createMachine<ExperienceContext, ExperienceEven
       })),
     },
     guards: {
-      canGenerate: (context) => Boolean(context.selections.arrival && context.selections.endDate && context.selections.persona),
+      canGenerate: (context) => Boolean(context.selections.arrival && context.selections.category && context.selections.budget > 0),
     },
   },
 );

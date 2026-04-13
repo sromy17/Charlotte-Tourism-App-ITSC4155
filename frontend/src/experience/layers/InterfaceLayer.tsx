@@ -9,7 +9,15 @@ type Props = {
 };
 
 export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
-  const { itineraryNodes, activeTaskId, setActiveTask, completeTask, weather } = useExperienceStore();
+  const {
+    itineraryNodes,
+    activeTaskId,
+    setActiveTask,
+    completeTask,
+    weather,
+    recommendations,
+    noResultsMessage,
+  } = useExperienceStore();
 
   const activeTasks = itineraryNodes.filter((node) => node.lane === 'active');
   const discoveryNodes = itineraryNodes.filter((node) => node.lane === 'discovery');
@@ -28,6 +36,10 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
       })),
     [itineraryNodes],
   );
+
+  const events = recommendations?.events ?? [];
+  const restaurants = recommendations?.restaurants ?? [];
+  const activities = recommendations?.activities ?? [];
 
   return (
     <motion.section
@@ -171,6 +183,54 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
           </div>
         </aside>
       </div>
+
+      <section className="luxury-panel luxury-scroll min-h-0 overflow-auto p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="luxury-label text-[#79bfa0]">Filtered Results</p>
+            <h3 className="mt-1 text-2xl italic">Events, Food, and Activities for your selected settings</h3>
+          </div>
+          {recommendations && (
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
+              {recommendations.category} · {recommendations.date} · ${recommendations.budget}
+            </p>
+          )}
+        </div>
+
+        {noResultsMessage ? (
+          <div className="mt-4 rounded-2xl border border-[#d6c08e]/35 bg-[#1a1404]/45 p-5">
+            <p className="text-lg italic text-[#f3e8cc]">No perfect matches found yet</p>
+            <p className="mt-2 text-sm text-[#e7ddc5]/85">{noResultsMessage}</p>
+            <p className="mt-2 text-xs text-[#d6c08e]">Tip: Try a nearby date, a broader vibe, or a slightly higher budget limit.</p>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            {[
+              { label: 'Events', items: events },
+              { label: 'Food / Restaurants', items: restaurants },
+              { label: 'Activities / Places', items: activities },
+            ].map((section) => (
+              <article key={section.label} className="rounded-2xl border border-white/15 bg-black/25 p-4">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#79bfa0]">{section.label}</p>
+                <div className="mt-3 space-y-3">
+                  {section.items.length === 0 ? (
+                    <p className="text-xs text-white/55">No items returned for this section with your current filters.</p>
+                  ) : (
+                    section.items.slice(0, 6).map((item) => (
+                      <div key={item.id} className="rounded-xl border border-white/10 bg-black/35 p-3">
+                        <p className="text-sm italic text-white/92">{item.name}</p>
+                        <p className="mt-1 text-xs text-white/60">{item.location}</p>
+                        <p className="mt-1 text-xs text-white/60">{item.datetime || 'Time TBD'} · {item.price || 'Price unavailable'}</p>
+                        <p className="mt-2 text-xs text-white/50">{item.description}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </motion.section>
   );
 };

@@ -20,14 +20,41 @@ const Register: React.FC = () => {
 
   const allValid = emailValid && passwordLengthValid && passwordUpperValid && passwordSpecialValid && nameValid;
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ name: true, email: true, password: true });
     if (!allValid) return;
 
     // TODO: call backend register API
     // For now navigate to home as if registration succeeded
+    try {
+    const response = await fetch("http://127.0.0.1:8000/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+        full_name: name
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.detail || "Registration failed");
+      return;
+    }
+
+    console.log("Registered:", data);
+
+    // redirect after success
     navigate('/');
+  } catch (error) {
+    console.log("Error:", error);
+    alert("Something went wrong");
+  }
   };
 
   return (

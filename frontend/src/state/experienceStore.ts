@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { RecommendationsResponse } from '../services/api';
 
 export interface ItineraryNode {
   id: string;
@@ -43,12 +44,15 @@ interface ExperienceStore {
   activeTaskId: string | null;
   itineraryNodes: ItineraryNode[];
   recommendations: PlannerRecommendationsResponse | null;
+  // New: Store the API response directly for component consumption
+  apiRecommendations: RecommendationsResponse | null;
   loading: boolean;
   error: string | null;
   noResultsMessage: string | null;
   weather: WeatherSnapshot | null;
   setNodes: (nodes: ItineraryNode[]) => void;
   setRecommendations: (recommendations: PlannerRecommendationsResponse | null) => void;
+  setApiRecommendations: (recommendations: RecommendationsResponse | null) => void;
   hydrateFromRecommendations: (response: PlannerRecommendationsResponse) => void;
   setActiveTask: (taskId: string | null) => void;
   completeTask: (taskId: string) => void;
@@ -109,12 +113,14 @@ export const useExperienceStore = create<ExperienceStore>((set) => ({
   activeTaskId: 'node-1',
   itineraryNodes: seedNodes,
   recommendations: null,
+  apiRecommendations: null,
   loading: false,
   error: null,
   noResultsMessage: null,
   weather: null,
   setNodes: (nodes) => set({ itineraryNodes: nodes }),
   setRecommendations: (recommendations) => set({ recommendations }),
+  setApiRecommendations: (recommendations) => set({ apiRecommendations: recommendations }),
   hydrateFromRecommendations: (response) => {
     const prioritized = [...response.events, ...response.restaurants, ...response.activities];
     const mappedNodes: ItineraryNode[] = prioritized.slice(0, 12).map((item, index) => ({

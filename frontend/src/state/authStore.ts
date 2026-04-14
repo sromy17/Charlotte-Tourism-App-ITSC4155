@@ -84,13 +84,12 @@ export const useAuthStore = create<AuthStore>()(
         set({ loading: true, error: null });
 
         try {
-          // Placeholder endpoint for backend merge: replace this mapping when auth is finalized.
           const response = await api.post('/api/auth/login', {
             email: normalizedEmail,
             password,
           });
 
-          const token = response.data?.token ?? 'demo-session-token';
+          const token = response.data?.token;
           const user: AuthUser = response.data?.user ?? {
             name: buildDisplayName(normalizedEmail),
             email: normalizedEmail,
@@ -111,27 +110,16 @@ export const useAuthStore = create<AuthStore>()(
             success: true,
             message: response.data?.message ?? 'Signed in successfully.',
           };
-        } catch {
-          const demoToken = 'demo-session-token';
-          const demoUser: AuthUser = {
-            name: buildDisplayName(normalizedEmail),
-            email: normalizedEmail,
-          };
-
-          localStorage.setItem('token', demoToken);
-          localStorage.setItem('user', JSON.stringify(demoUser));
-
+        } catch (error) {
           set({
-            user: demoUser,
-            token: demoToken,
-            isAuthenticated: true,
             loading: false,
-            error: null,
+            error: error instanceof Error ? error.message : 'Login failed',
+            isAuthenticated: false,
           });
 
           return {
-            success: true,
-            message: 'Signed in in demo mode. Replace the placeholder auth endpoint when backend is ready.',
+            success: false,
+            message: error instanceof Error ? error.message : 'Login failed. Please check your email and password.',
           };
         }
       },

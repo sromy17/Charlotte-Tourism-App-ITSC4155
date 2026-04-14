@@ -10,6 +10,7 @@ router = APIRouter()
 @router.get("/forecast")
 async def get_weather_forecast(lat: float = 35.2271, lon: float = -80.8431):
     settings = get_settings()
+    print("WEATHER KEY:", settings.openweather_api_key)  # 👈 ADD THIS
     service = WeatherService(settings.openweather_api_key)
     try:
         return await service.get_forecast(lat, lon)

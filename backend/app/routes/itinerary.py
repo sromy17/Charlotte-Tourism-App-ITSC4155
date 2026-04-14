@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.database import get_db
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import get_async_db
 from app.models.itinerary import Itinerary  # Make sure this matches your model class name!
 from app.schemas.itinerary import ItineraryCreate, ItineraryResponse
 
 router = APIRouter()
 
 @router.post("/", response_model=ItineraryResponse)
-def create_itinerary(itinerary: ItineraryCreate, db: Session = Depends(get_db)):
+async def create_itinerary(itinerary: ItineraryCreate, db: AsyncSession = Depends(get_async_db)):
     """
     Save a new generated itinerary to the database.
     """
@@ -18,33 +19,34 @@ def create_itinerary(itinerary: ItineraryCreate, db: Session = Depends(get_db)):
         user_id=itinerary.user_id
     )
 
-    
-    
     # 2. Add it to the database session and save it
     db.add(new_itinerary)
-    db.commit()
+    await db.commit()
     
     # 3. Refresh to get the brand new ID assigned by PostgreSQL
-    db.refresh(new_itinerary)
+    await db.refresh(new_itinerary)
     
     # 4. Return the saved trip back to the frontend
     return new_itinerary
 
 
 @router.get("/{user_id}", response_model=list[ItineraryResponse])
-def get_itineraries_for_user(user_id: int, db: Session = Depends(get_db)):
+async def get_itineraries_for_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
     """Fetch all saved itineraries for the specified user_id."""
-    itineraries = db.query(Itinerary).filter(Itinerary.user_id == user_id).all()
+    result = await db.execute(select(Itinerary).where(Itinerary.user_id == user_id))
+    itineraries = result.scalars().all()
     return itineraries
 
 
 @router.delete("/{itinerary_id}")
-def delete_itinerary(itinerary_id: int, db: Session = Depends(get_db)):
+async def delete_itinerary(itinerary_id: int, db: AsyncSession = Depends(get_async_db)):
     """Delete an itinerary by ID."""
-    itinerary = db.query(Itinerary).filter(Itinerary.id == itinerary_id).first()
+    result = await db.execute(select(Itinerary).where(Itinerary.id == itinerary_id))
+    itinerary = result.scalar_one_or_none()
+    
     if not itinerary:
         raise HTTPException(status_code=404, detail="Itinerary not found")
 
     db.delete(itinerary)
-    db.commit()
+    await db.commit()
     return {"message": "Itinerary deleted successfully"}

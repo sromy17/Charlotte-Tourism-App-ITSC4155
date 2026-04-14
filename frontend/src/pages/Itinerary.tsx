@@ -4,10 +4,13 @@ import { motion } from 'framer-motion';
 import { useExperienceStore } from '../state/experienceStore';
 
 const Itinerary: React.FC = () => {
-  const { itineraryNodes, weather } = useExperienceStore();
+  const { itineraryNodes, weather, recommendations, noResultsMessage } = useExperienceStore();
 
   const activeStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'active'), [itineraryNodes]);
   const discoveryStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'discovery'), [itineraryNodes]);
+  const events = recommendations?.events ?? [];
+  const restaurants = recommendations?.restaurants ?? [];
+  const activities = recommendations?.activities ?? [];
 
   return (
     <div className="min-h-[calc(100vh-7rem)] bg-[#020202] px-6 pb-20 text-[#F6F3EB]">
@@ -92,6 +95,49 @@ const Itinerary: React.FC = () => {
             </div>
           </section>
         </div>
+
+        <section className="luxury-panel mt-6 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="luxury-label text-[#79bfa0]">Discovery Results</p>
+            {recommendations && (
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
+                {recommendations.category} · {recommendations.date} · ${recommendations.budget}
+              </p>
+            )}
+          </div>
+
+          {noResultsMessage ? (
+            <div className="mt-3 rounded-2xl border border-[#d6c08e]/35 bg-[#1a1404]/45 p-4">
+              <p className="text-lg italic text-[#f3e8cc]">No matching recommendations right now</p>
+              <p className="mt-2 text-sm text-[#e7ddc5]/85">{noResultsMessage}</p>
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              {[
+                { title: 'Events', items: events },
+                { title: 'Food / Restaurants', items: restaurants },
+                { title: 'Activities / Places', items: activities },
+              ].map((group) => (
+                <article key={group.title} className="rounded-xl border border-white/20 bg-black/30 p-4">
+                  <h2 className="text-xl italic">{group.title}</h2>
+                  <div className="mt-3 space-y-2">
+                    {group.items.length === 0 ? (
+                      <p className="text-xs text-white/55">No results in this section for the selected budget/date.</p>
+                    ) : (
+                      group.items.slice(0, 5).map((item) => (
+                        <div key={item.id} className="rounded-lg border border-white/10 bg-black/25 p-3">
+                          <p className="text-sm text-white/90">{item.name}</p>
+                          <p className="mt-1 text-xs text-white/60">{item.location}</p>
+                          <p className="mt-1 text-xs text-white/60">{item.datetime || 'Time TBD'} · {item.price || 'Price unavailable'}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

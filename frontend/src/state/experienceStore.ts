@@ -18,27 +18,43 @@ export interface WeatherSnapshot {
   hourly?: Array<{ icon?: string }>;
 }
 
-export interface SuggestionPayload {
+export interface RecommendationItem {
   id: string;
-  activity: string;
-  location: string;
-  drive_time: string;
-  cost: string;
+  name: string;
   description: string;
+  datetime?: string | null;
+  location: string;
+  price?: string | null;
+  image?: string | null;
+  type: string;
+  source: string;
+}
+
+export interface PlannerRecommendationsResponse {
+  category: string;
+  date: string;
+  budget: number;
+  events: RecommendationItem[];
+  restaurants: RecommendationItem[];
+  activities: RecommendationItem[];
 }
 
 interface ExperienceStore {
   activeTaskId: string | null;
   itineraryNodes: ItineraryNode[];
+  recommendations: PlannerRecommendationsResponse | null;
   loading: boolean;
   error: string | null;
+  noResultsMessage: string | null;
   weather: WeatherSnapshot | null;
   setNodes: (nodes: ItineraryNode[]) => void;
-  hydrateFromSuggestions: (items: SuggestionPayload[]) => void;
+  setRecommendations: (recommendations: PlannerRecommendationsResponse | null) => void;
+  hydrateFromRecommendations: (response: PlannerRecommendationsResponse) => void;
   setActiveTask: (taskId: string | null) => void;
   completeTask: (taskId: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setNoResultsMessage: (message: string | null) => void;
   setWeather: (weather: WeatherSnapshot | null) => void;
 }
 
@@ -92,26 +108,35 @@ const seedNodes: ItineraryNode[] = [
 export const useExperienceStore = create<ExperienceStore>((set) => ({
   activeTaskId: 'node-1',
   itineraryNodes: seedNodes,
+  recommendations: null,
   loading: false,
   error: null,
+  noResultsMessage: null,
   weather: null,
   setNodes: (nodes) => set({ itineraryNodes: nodes }),
-  hydrateFromSuggestions: (items) => {
-    const mappedNodes: ItineraryNode[] = items.slice(0, 10).map((item, index) => ({
+  setRecommendations: (recommendations) => set({ recommendations }),
+  hydrateFromRecommendations: (response) => {
+    const prioritized = [...response.events, ...response.restaurants, ...response.activities];
+    const mappedNodes: ItineraryNode[] = prioritized.slice(0, 12).map((item, index) => ({
       id: String(item.id),
-      title: item.activity,
+      title: item.name,
       location: item.location,
-      cost: item.cost,
-      driveTime: item.drive_time,
+      cost: item.price || 'Price unavailable',
+      driveTime: 'ETA varies',
       description: item.description,
-      time: `${9 + index}:00`,
-      lane: index < 5 ? 'active' : 'discovery',
+      time: item.datetime ? item.datetime.replace('T', ' ') : `${9 + index}:00`,
+      lane: index < 6 ? 'active' : 'discovery',
       status: index === 0 ? 'active' : 'queued',
     }));
 
     set({
+      recommendations: response,
       itineraryNodes: mappedNodes,
       activeTaskId: mappedNodes[0]?.id ?? null,
+      noResultsMessage:
+        prioritized.length === 0
+          ? 'No recommendations matched your selected vibe, date, and budget. Try a wider budget or a nearby date.'
+          : null,
     });
   },
   setActiveTask: (taskId) => set({ activeTaskId: taskId }),
@@ -124,5 +149,6 @@ export const useExperienceStore = create<ExperienceStore>((set) => ({
     })),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
+  setNoResultsMessage: (message) => set({ noResultsMessage: message }),
   setWeather: (weather) => set({ weather }),
 }));

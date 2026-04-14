@@ -1,0 +1,1 @@
+declare module '@tomtom-international/web-sdk-maps/dist/maps.css';

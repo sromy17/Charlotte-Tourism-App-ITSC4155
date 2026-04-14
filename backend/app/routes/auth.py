@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
-
+from typing import Optional
 from app.database import get_async_db
 from app.models.user import User
 
@@ -17,7 +17,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
-    full_name: str | None = None
+    full_name: Optional[str] = None
 
 
 class LoginRequest(BaseModel):

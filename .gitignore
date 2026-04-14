@@ -38,3 +38,10 @@ Thumbs.db
 
 # Docker / logs
 *.log
+node_modules
+node_modules
+
+node_modules/
+frontend/node_modules/
+backend/.venv/
+backend/__pycache__/

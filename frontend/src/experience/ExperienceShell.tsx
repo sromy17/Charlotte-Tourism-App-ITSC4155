@@ -24,6 +24,7 @@ export const ExperienceShell: React.FC = () => {
     setError,
     setNoResultsMessage,
     setWeather,
+    setSelectedPlaces,
     hydrateFromRecommendations,
   } = useExperienceStore();
   const {
@@ -54,6 +55,7 @@ export const ExperienceShell: React.FC = () => {
     send({ type: 'GENERATE' });
     setError(null);
     setNoResultsMessage(null);
+    setSelectedPlaces([]);
     setLoading(true);
 
     try {
@@ -113,6 +115,7 @@ export const ExperienceShell: React.FC = () => {
     setActiveTask(null);
     setWeather(null);
     setError(null);
+    setSelectedPlaces([]);
     setNoResultsMessage(null);
     send({ type: 'RESET' });
   };

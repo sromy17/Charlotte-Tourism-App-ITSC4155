@@ -6,17 +6,17 @@ interface RecommendationCardProps {
 	item: RecommendationItemAPI;
 	index?: number;
 	onClick?: () => void;
+	onAdd?: () => void;
+	isAdded?: boolean;
 	variant?: 'default' | 'compact';
 }
 
-/**
- * Displays a single recommendation item from the backend
- * Shows name, location, type, and API source with styled card design
- */
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
 	item,
 	index = 0,
 	onClick,
+	onAdd,
+	isAdded = false,
 	variant = 'default',
 }) => {
 	const getSourceColor = (source: string): string => {
@@ -67,14 +67,32 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 						<p className="text-[9px] text-white/40 mt-1 truncate">
 							{item.location}
 						</p>
-						<div className="mt-2 flex gap-2 flex-wrap">
-							<span className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase ${getSourceBadgeColor(item.api_source)}`}>
-								{item.api_source}
-							</span>
-							{item.price && (
-								<span className="px-2 py-0.5 rounded text-[8px] font-mono text-white/60 bg-white/5">
-									{item.price}
+						<div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+							<div className="flex gap-2 flex-wrap">
+								<span className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase ${getSourceBadgeColor(item.api_source)}`}>
+									{item.api_source}
 								</span>
+								{item.price && (
+									<span className="px-2 py-0.5 rounded text-[8px] font-mono text-white/60 bg-white/5">
+										{item.price}
+									</span>
+								)}
+							</div>
+							{onAdd && (
+								<button
+									type="button"
+									onClick={(event) => {
+										event.stopPropagation();
+										onAdd();
+									}}
+									className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] transition ${
+										isAdded
+											? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/25'
+											: 'bg-white/10 text-white/90 border border-white/10 hover:bg-white/20'
+									}`}
+								>
+									{isAdded ? 'Added' : '+'}
+								</button>
 							)}
 						</div>
 					</div>
@@ -128,7 +146,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 					)}
 
 					{/* Footer Info */}
-					<div className="flex items-center justify-between pt-3 border-t border-white/10">
+					<div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/10">
 						{/* Type & Price */}
 						<div className="flex gap-2">
 							<span className="px-2 py-1 rounded text-[9px] font-mono uppercase bg-white/5 text-white/60">
@@ -141,12 +159,30 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 							)}
 						</div>
 
-						{/* DateTime if available */}
-						{item.datetime && (
-							<span className="text-[9px] text-white/40 font-mono">
-								{item.datetime.split('T')[0]}
-							</span>
-						)}
+						<div className="flex items-center gap-3">
+							{item.datetime && (
+								<span className="text-[9px] text-white/40 font-mono">
+									{item.datetime.split('T')[0]}
+								</span>
+							)}
+
+							{onAdd && (
+								<button
+									type="button"
+									onClick={(event) => {
+										event.stopPropagation();
+										onAdd();
+									}}
+									className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] transition ${
+										isAdded
+											? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/25'
+											: 'bg-white/10 text-white/90 border border-white/10 hover:bg-white/20'
+									}`}
+								>
+									{isAdded ? 'Added' : '+ Add'}
+								</button>
+							)}
+						</div>
 					</div>
 				</div>
 			</div>

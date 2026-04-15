@@ -1,11 +1,64 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { SelectionPayload } from '../../state/experienceMachine';
 import { useExperienceStore } from '../../state/experienceStore';
+import RecommendationCard from '../../components/RecommendationCard';
+import { RecommendationItemAPI } from '../../services/api';
 
 type Props = {
   selections: SelectionPayload;
   onReset: () => void;
+};
+
+type SortablePlanItemProps = {
+  item: RecommendationItemAPI;
+  index: number;
+  onRemove: () => void;
+};
+
+const SortablePlanItem: React.FC<SortablePlanItemProps> = ({ item, index, onRemove }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="rounded-3xl border border-white/10 bg-[#081311]/95 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-3xl bg-royal-emerald/20 text-royal-emerald font-semibold">
+            {index + 1}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white line-clamp-2">{item.name}</p>
+            <p className="text-xs text-white/50">{item.location || 'Charlotte destination'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            {...listeners}
+            {...attributes}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[12px] text-white/70 hover:bg-white/10"
+          >
+            ☰
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-full border border-white/10 bg-red-500/10 px-3 py-2 text-[12px] text-red-300 hover:bg-red-500/20"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
@@ -17,6 +70,10 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
     weather,
     recommendations,
     noResultsMessage,
+    selectedPlaces,
+    addSelectedPlace,
+    removeSelectedPlace,
+    reorderSelectedPlaces,
   } = useExperienceStore();
 
   const activeTasks = itineraryNodes.filter((node) => node.lane === 'active');
@@ -40,6 +97,35 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
   const events = recommendations?.events ?? [];
   const restaurants = recommendations?.restaurants ?? [];
   const activities = recommendations?.activities ?? [];
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const availableItems = useMemo<RecommendationItemAPI[]>(
+    () =>
+      [...events, ...restaurants, ...activities].map((item) => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        api_source: item.source,
+        description: item.description,
+        location: item.location,
+        price: item.price ?? undefined,
+        image_url: item.image ?? undefined,
+        datetime: item.datetime ?? undefined,
+        coordinates: (item as any).coordinates ?? undefined,
+      })),
+    [events, restaurants, activities],
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = selectedPlaces.findIndex((item) => item.id === String(active.id));
+    const newIndex = selectedPlaces.findIndex((item) => item.id === String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    reorderSelectedPlaces(arrayMove(selectedPlaces, oldIndex, newIndex));
+  };
 
   return (
     <motion.section
@@ -188,7 +274,7 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="luxury-label text-[#79bfa0]">Filtered Results</p>
-            <h3 className="mt-1 text-2xl italic">Events, Food, and Activities for your selected settings</h3>
+            <h3 className="mt-1 text-2xl italic">Build your itinerary from the recommendations below</h3>
           </div>
           {recommendations && (
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
@@ -204,30 +290,66 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
             <p className="mt-2 text-xs text-[#d6c08e]">Tip: Try a nearby date, a broader vibe, or a slightly higher budget limit.</p>
           </div>
         ) : (
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            {[
-              { label: 'Events', items: events },
-              { label: 'Food / Restaurants', items: restaurants },
-              { label: 'Activities / Places', items: activities },
-            ].map((section) => (
-              <article key={section.label} className="rounded-2xl border border-white/15 bg-black/25 p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#79bfa0]">{section.label}</p>
-                <div className="mt-3 space-y-3">
-                  {section.items.length === 0 ? (
-                    <p className="text-xs text-white/55">No items returned for this section with your current filters.</p>
+          <div className="mt-4 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+            <div className="space-y-4">
+              <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#79bfa0]">Available Picks</p>
+                    <p className="mt-2 text-sm text-white/70">Add attractions to your itinerary directly from the recommendation list.</p>
+                  </div>
+                  <span className="rounded-full bg-white/5 px-3 py-2 text-[11px] text-white/70">{availableItems.length} options</span>
+                </div>
+
+                <div className="mt-4 grid gap-4">
+                  {availableItems.length === 0 ? (
+                    <div className="rounded-3xl border border-white/10 bg-black/25 p-4 text-sm text-white/60">
+                      No recommendations available yet. Generate a new plan to start building.
+                    </div>
                   ) : (
-                    section.items.slice(0, 6).map((item) => (
-                      <div key={item.id} className="rounded-xl border border-white/10 bg-black/35 p-3">
-                        <p className="text-sm italic text-white/92">{item.name}</p>
-                        <p className="mt-1 text-xs text-white/60">{item.location}</p>
-                        <p className="mt-1 text-xs text-white/60">{item.datetime || 'Time TBD'} · {item.price || 'Price unavailable'}</p>
-                        <p className="mt-2 text-xs text-white/50">{item.description}</p>
-                      </div>
+                    availableItems.map((item) => (
+                      <RecommendationCard
+                        key={item.id}
+                        item={item}
+                        onAdd={() => addSelectedPlace(item)}
+                        isAdded={selectedPlaces.some((selected) => selected.id === item.id)}
+                      />
                     ))
                   )}
                 </div>
-              </article>
-            ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-[#020202]/95 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="luxury-label text-[#79bfa0]">My Itinerary</p>
+                  <p className="mt-2 text-sm text-white/70">Drag to reorder the stops and lock in the order you want.</p>
+                </div>
+                <span className="rounded-full bg-white/5 px-3 py-2 text-[11px] text-white/70">{selectedPlaces.length} stops</span>
+              </div>
+
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={selectedPlaces.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+                  <div className="mt-4 space-y-3">
+                    {selectedPlaces.length === 0 ? (
+                      <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-white/60">
+                        Add items from the recommendation cards to start building your day.
+                      </div>
+                    ) : (
+                      selectedPlaces.map((item, idx) => (
+                        <SortablePlanItem
+                          key={item.id}
+                          item={item}
+                          index={idx}
+                          onRemove={() => removeSelectedPlace(item.id)}
+                        />
+                      ))
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
           </div>
         )}
       </section>

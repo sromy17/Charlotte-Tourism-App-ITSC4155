@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { RecommendationsResponse } from '../services/api';
+import { RecommendationItemAPI, RecommendationsResponse } from '../services/api';
 
 export interface ItineraryNode {
   id: string;
@@ -46,6 +46,7 @@ interface ExperienceStore {
   recommendations: PlannerRecommendationsResponse | null;
   // New: Store the API response directly for component consumption
   apiRecommendations: RecommendationsResponse | null;
+  selectedPlaces: RecommendationItemAPI[];
   loading: boolean;
   error: string | null;
   noResultsMessage: string | null;
@@ -53,6 +54,10 @@ interface ExperienceStore {
   setNodes: (nodes: ItineraryNode[]) => void;
   setRecommendations: (recommendations: PlannerRecommendationsResponse | null) => void;
   setApiRecommendations: (recommendations: RecommendationsResponse | null) => void;
+  setSelectedPlaces: (places: RecommendationItemAPI[]) => void;
+  addSelectedPlace: (place: RecommendationItemAPI) => void;
+  removeSelectedPlace: (id: string) => void;
+  reorderSelectedPlaces: (places: RecommendationItemAPI[]) => void;
   hydrateFromRecommendations: (response: PlannerRecommendationsResponse) => void;
   setActiveTask: (taskId: string | null) => void;
   completeTask: (taskId: string) => void;
@@ -114,6 +119,7 @@ export const useExperienceStore = create<ExperienceStore>((set) => ({
   itineraryNodes: seedNodes,
   recommendations: null,
   apiRecommendations: null,
+  selectedPlaces: [],
   loading: false,
   error: null,
   noResultsMessage: null,
@@ -121,6 +127,18 @@ export const useExperienceStore = create<ExperienceStore>((set) => ({
   setNodes: (nodes) => set({ itineraryNodes: nodes }),
   setRecommendations: (recommendations) => set({ recommendations }),
   setApiRecommendations: (recommendations) => set({ apiRecommendations: recommendations }),
+  setSelectedPlaces: (selectedPlaces) => set({ selectedPlaces }),
+  addSelectedPlace: (place) =>
+    set((state) => ({
+      selectedPlaces: state.selectedPlaces.some((item) => item.id === place.id)
+        ? state.selectedPlaces
+        : [...state.selectedPlaces, place],
+    })),
+  removeSelectedPlace: (id) =>
+    set((state) => ({
+      selectedPlaces: state.selectedPlaces.filter((item) => item.id !== id),
+    })),
+  reorderSelectedPlaces: (selectedPlaces) => set({ selectedPlaces }),
   hydrateFromRecommendations: (response) => {
     const prioritized = [...response.events, ...response.restaurants, ...response.activities];
     const mappedNodes: ItineraryNode[] = prioritized.slice(0, 12).map((item, index) => ({

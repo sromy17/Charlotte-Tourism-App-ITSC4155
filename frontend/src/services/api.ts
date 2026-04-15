@@ -29,6 +29,10 @@ export interface RecommendationItemAPI {
 	price?: string;
 	image_url?: string;
 	datetime?: string;
+	coordinates?: {
+		latitude: number;
+		longitude: number;
+	};
 }
 
 export interface RecommendationsResponse {

@@ -1,16 +1,122 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useExperienceStore } from '../state/experienceStore';
+import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import RecommendationCard from '../components/RecommendationCard';
+import { useExperienceStore, ItineraryNode, RecommendationItem } from '../state/experienceStore';
+import { RecommendationItemAPI } from '../services/api';
+
+type PlanItem = RecommendationItemAPI | ItineraryNode;
+
+type SortablePlanItemProps = {
+  item: RecommendationItemAPI;
+  index: number;
+  onRemove: () => void;
+};
+
+const SortablePlanItem: React.FC<SortablePlanItemProps> = ({ item, index, onRemove }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+
+  return (
+    <motion.article
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="rounded-xl border border-white/20 bg-black/30 p-4"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-royal-emerald/20 text-royal-emerald font-semibold">
+            {index + 1}
+          </div>
+          <div>
+            <h2 className="text-2xl italic">{item.name}</h2>
+            <p className="mt-1 text-xs text-white/60">{item.location || 'Charlotte destination'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white/80 hover:bg-white/10"
+          >
+            ↕
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200 hover:bg-red-500/20"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+
+      {item.description && <p className="mt-3 text-sm text-white/70">{item.description}</p>}
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-white/60">
+        {item.datetime && <span>{item.datetime.split('T')[0]}</span>}
+        {item.price && <span>{item.price}</span>}
+      </div>
+    </motion.article>
+  );
+};
 
 const Itinerary: React.FC = () => {
-  const { itineraryNodes, weather, recommendations, noResultsMessage } = useExperienceStore();
+  const {
+    itineraryNodes,
+    selectedPlaces,
+    weather,
+    recommendations,
+    noResultsMessage,
+    addSelectedPlace,
+    removeSelectedPlace,
+    reorderSelectedPlaces,
+  } = useExperienceStore();
 
   const activeStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'active'), [itineraryNodes]);
   const discoveryStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'discovery'), [itineraryNodes]);
   const events = recommendations?.events ?? [];
   const restaurants = recommendations?.restaurants ?? [];
   const activities = recommendations?.activities ?? [];
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const hasSelectedPlan = selectedPlaces.length > 0;
+  const currentPlan: PlanItem[] = hasSelectedPlan ? selectedPlaces : activeStops;
+
+  const mapRecommendationToApi = useCallback((item: RecommendationItem): RecommendationItemAPI => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    api_source: item.source,
+    description: item.description,
+    location: item.location,
+    price: item.price ?? undefined,
+    image_url: item.image ?? undefined,
+    datetime: item.datetime ?? undefined,
+    coordinates: undefined,
+  }), []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = selectedPlaces.findIndex((item) => item.id === String(active.id));
+      const newIndex = selectedPlaces.findIndex((item) => item.id === String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      reorderSelectedPlaces(arrayMove(selectedPlaces, oldIndex, newIndex));
+    },
+    [selectedPlaces, reorderSelectedPlaces],
+  );
+
+  const isAdded = useCallback(
+    (item: RecommendationItemAPI) => selectedPlaces.some((place) => place.id === item.id),
+    [selectedPlaces],
+  );
 
   return (
     <div className="min-h-[calc(100vh-7rem)] bg-[#020202] px-6 pb-20 text-[#F6F3EB]">
@@ -46,26 +152,50 @@ const Itinerary: React.FC = () => {
 
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
           <section className="luxury-panel p-5">
-            <p className="luxury-label">Planned Stops</p>
+            <p className="luxury-label">{hasSelectedPlan ? 'Current Plan' : 'Planned Stops'}</p>
             <div className="mt-3 space-y-3">
-              {activeStops.length === 0 ? (
+              {currentPlan.length === 0 ? (
                 <p className="text-sm text-white/60">No planned stops yet. Start in the planner to generate your route.</p>
+              ) : hasSelectedPlan ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-white/50">Drag to reorder your selected stops, or remove any item as needed.</p>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={selectedPlaces.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-3">
+                        {selectedPlaces.map((item, index) => (
+                          <SortablePlanItem key={item.id} item={item} index={index} onRemove={() => removeSelectedPlace(item.id)} />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                </div>
               ) : (
-                activeStops.map((node, index) => (
-                  <motion.article
-                    key={node.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="rounded-xl border border-white/20 bg-black/30 p-4"
-                  >
-                    <h2 className="text-2xl italic">{node.title}</h2>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">{node.time}</p>
-                    <p className="mt-1 text-sm text-white/70">{node.location}</p>
-                    <p className="mt-2 text-xs text-white/55">{node.description}</p>
-                  </motion.article>
-                ))
+                currentPlan.map((item, index) => {
+                  const title = 'name' in item ? item.name : item.title;
+                  const time = 'datetime' in item ? item.datetime : 'time' in item ? item.time : undefined;
+                  const location = item.location;
+                  const description = item.description;
+                  const price = 'price' in item ? item.price : undefined;
+
+                  return (
+                    <motion.article
+                      key={item.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.3 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="rounded-xl border border-white/20 bg-black/30 p-4"
+                    >
+                      <h2 className="text-2xl italic">{title}</h2>
+                      {time && (
+                        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">{time}</p>
+                      )}
+                      <p className="mt-1 text-sm text-white/70">{location}</p>
+                      {price && <p className="mt-1 text-xs text-white/55">{price}</p>}
+                      {description && <p className="mt-2 text-xs text-white/55">{description}</p>}
+                    </motion.article>
+                  );
+                })
               )}
             </div>
           </section>
@@ -124,13 +254,19 @@ const Itinerary: React.FC = () => {
                     {group.items.length === 0 ? (
                       <p className="text-xs text-white/55">No results in this section for the selected budget/date.</p>
                     ) : (
-                      group.items.slice(0, 5).map((item) => (
-                        <div key={item.id} className="rounded-lg border border-white/10 bg-black/25 p-3">
-                          <p className="text-sm text-white/90">{item.name}</p>
-                          <p className="mt-1 text-xs text-white/60">{item.location}</p>
-                          <p className="mt-1 text-xs text-white/60">{item.datetime || 'Time TBD'} · {item.price || 'Price unavailable'}</p>
-                        </div>
-                      ))
+                      group.items.slice(0, 5).map((item, itemIndex) => {
+                        const apiItem = mapRecommendationToApi(item);
+                        return (
+                          <RecommendationCard
+                            key={item.id}
+                            item={apiItem}
+                            index={itemIndex}
+                            variant="compact"
+                            onAdd={() => addSelectedPlace(apiItem)}
+                            isAdded={isAdded(apiItem)}
+                          />
+                        );
+                      })
                     )}
                   </div>
                 </article>

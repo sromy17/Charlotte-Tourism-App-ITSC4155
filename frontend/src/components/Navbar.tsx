@@ -5,7 +5,6 @@ const Navbar: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // ✅ FIX: read real login state from localStorage
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     const isSignedIn = !!user;
 
@@ -13,9 +12,9 @@ const Navbar: React.FC = () => {
     const accountLabel = isSignedIn ? 'Profile' : 'Sign In';
 
     const handleSignOut = () => {
-        localStorage.removeItem('user'); // ✅ clear login
+        localStorage.removeItem('user');
         navigate('/');
-        window.location.reload(); // ✅ force navbar refresh
+        window.location.reload(); 
     };
 
     return (

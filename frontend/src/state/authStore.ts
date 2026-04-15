@@ -89,13 +89,17 @@ export const useAuthStore = create<AuthStore>()(
             password,
           });
 
-          const token = response.data?.token;
+          const token = response.data?.token ?? null;
           const user: AuthUser = response.data?.user ?? {
             name: buildDisplayName(normalizedEmail),
             email: normalizedEmail,
           };
 
-          localStorage.setItem('token', token);
+          if (token) {
+            localStorage.setItem('token', token);
+          } else {
+            localStorage.removeItem('token');
+          }
           localStorage.setItem('user', JSON.stringify(user));
 
           set({

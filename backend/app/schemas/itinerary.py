@@ -1,12 +1,12 @@
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 from datetime import datetime
 
 # 1. The Base Schema (Shared properties)
 
 class ItineraryBase(BaseModel):
     trip_name: str
-    saved_activities: Dict[str, Any]
+    saved_activities: Any
 
 
 # 2. Schema for CREATING an itinerary (What the frontend sends us)

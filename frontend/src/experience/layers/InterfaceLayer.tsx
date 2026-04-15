@@ -1,12 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SelectionPayload } from '../../state/experienceMachine';
 import { useExperienceStore } from '../../state/experienceStore';
+import { useAuthStore } from '../../state/authStore';
 import RecommendationCard from '../../components/RecommendationCard';
-import { RecommendationItemAPI } from '../../services/api';
+import { RecommendationItemAPI, saveItinerary } from '../../services/api';
 
 type Props = {
   selections: SelectionPayload;
@@ -75,6 +76,70 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
     removeSelectedPlace,
     reorderSelectedPlaces,
   } = useExperienceStore();
+  const user = useAuthStore((state) => state.user);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const signedInUser = useMemo(() => {
+    if (user?.id) return user;
+    const stored = localStorage.getItem('user');
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  }, [user]);
+
+  const itineraryItemsToSave = useMemo(() => {
+    if (selectedPlaces.length > 0) {
+      return selectedPlaces;
+    }
+
+    return itineraryNodes.map((node) => ({
+      id: node.id,
+      name: node.title,
+      type: 'saved',
+      api_source: 'manual',
+      description: node.description,
+      location: node.location,
+      price: node.cost,
+      image_url: undefined,
+      datetime: node.time,
+    }));
+  }, [selectedPlaces, itineraryNodes]);
+
+  const handleSaveItinerary = async () => {
+    if (!signedInUser?.id) {
+      setSaveMessage('Sign in first so your itinerary is saved to your account.');
+      return;
+    }
+
+    if (itineraryItemsToSave.length === 0) {
+      setSaveMessage('Add stops before saving your itinerary.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      await saveItinerary({
+        trip_name: `Charlotte Itinerary ${new Date().toLocaleDateString()}`,
+        user_id: Number(signedInUser.id),
+        saved_activities: {
+          items: itineraryItemsToSave,
+          saved_at: new Date().toISOString(),
+        },
+      });
+      setSaveMessage('Saved itinerary to your account.');
+    } catch (error) {
+      console.error('[InterfaceLayer] Save itinerary failed', error);
+      setSaveMessage('Unable to save itinerary. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const activeTasks = itineraryNodes.filter((node) => node.lane === 'active');
   const discoveryNodes = itineraryNodes.filter((node) => node.lane === 'discovery');
@@ -146,13 +211,25 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
               Today in Charlotte: {weather.current_temp}° · {weather.description}
             </p>
           )}
+          {saveMessage && (
+            <p className="mt-2 text-xs text-white/70">{saveMessage}</p>
+          )}
         </div>
-        <button
-          onClick={onReset}
-          className="rounded-lg border border-white/30 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] hover:border-[#d6c08e]/65"
-        >
-          Start Over
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleSaveItinerary}
+            disabled={isSaving}
+            className="rounded-lg border border-[#d6c08e] bg-[#d6c08e]/15 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] transition hover:bg-[#d6c08e]/25 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSaving ? 'Saving itinerary...' : 'Save Itinerary'}
+          </button>
+          <button
+            onClick={onReset}
+            className="rounded-lg border border-white/30 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] hover:border-[#d6c08e]/65"
+          >
+            Start Over
+          </button>
+        </div>
       </header>
 
       <div className="grid min-h-0 gap-5 lg:grid-cols-[300px_1fr_320px]">

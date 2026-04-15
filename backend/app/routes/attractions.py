@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -17,6 +18,15 @@ from app.schemas.recommendations import (
 from app.services.planner_recommendation_service import PlannerRecommendationService
 
 logger = logging.getLogger(__name__)
+
+
+class AttractionCreate(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+    description: str | None = None
+    category: str | None = None
+    rating: float | None = None
 
 router = APIRouter()
 
@@ -250,6 +260,11 @@ async def list_attractions(db: Session = Depends(get_db)):
 @router.get("/db/{id}")
 async def get_attraction(id: int, db: Session = Depends(get_db)):
     return await attractions_controller.get_attraction_by_id(db, id)
+
+
+@router.post("/")
+async def create_attraction_root(attraction: AttractionCreate, db: Session = Depends(get_db)):
+    return await attractions_controller.create_attraction(db, attraction.dict())
 
 
 @router.post("/db")

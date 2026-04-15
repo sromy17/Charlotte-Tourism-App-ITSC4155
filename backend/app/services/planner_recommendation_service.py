@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 from datetime import date, datetime, time, timezone
 from typing import Dict, List, Optional, Tuple, Any
@@ -85,6 +86,103 @@ PRICE_SYMBOL_BY_TIER = {
     3: "$$$",
     4: "$$$$",
 }
+
+CATEGORY_MAP: Dict[str, str] = {
+    "restaurant": "Food",
+    "restaurants": "Food",
+    "cafe": "Food",
+    "coffee shop": "Food",
+    "bakery": "Food",
+    "food": "Food",
+    "bar": "Nightlife",
+    "nightclub": "Nightlife",
+    "brewery": "Nightlife",
+    "winery": "Nightlife",
+    "cocktail lounge": "Nightlife",
+    "music venue": "Nightlife",
+    "speakeasy": "Nightlife",
+    "museum": "Culture",
+    "gallery": "Culture",
+    "theater": "Culture",
+    "cinema": "Culture",
+    "arts": "Culture",
+    "historic": "Culture",
+    "park": "Outdoors",
+    "garden": "Outdoors",
+    "trail": "Outdoors",
+    "zoo": "Outdoors",
+    "outdoor": "Outdoors",
+    "playground": "Outdoors",
+    "riverwalk": "Outdoors",
+    "botanical": "Outdoors",
+}
+
+BLACKLIST = {
+    "nail bar",
+    "nail bars",
+    "nailsalons",
+    "beautysvc",
+    "beauty bar",
+    "candle bar",
+    "wax bar",
+    "lip print",
+    "paddy wax",
+    "professional",
+    "dentists",
+    "auto",
+    "gas_stations",
+    "gas station",
+    "oil change",
+    "supermarket",
+    "grocery",
+    "grocery store",
+    "convenience",
+    "convenience store",
+    "pharmacy",
+    "drugstore",
+    "warehouse club",
+    "big box",
+    "food lion",
+    "whole foods",
+    "trader joe",
+    "kroger",
+    "aldi",
+}
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _map_category_label(categories: List[str]) -> str:
+    lowered = [c.lower() for c in categories]
+    for alias, label in CATEGORY_MAP.items():
+        if any(alias in category or category in alias for category in lowered):
+            return label
+    return "Other"
+
+
+def _is_blacklisted_entry(name: Optional[str], categories: List[str]) -> bool:
+    lowered_categories = [c.lower() for c in categories]
+    lowered_name = (name or "").lower()
+
+    if any(black in lowered_name or lowered_name in black for black in BLACKLIST):
+        return True
+
+    if any(black in category or category in black for black in BLACKLIST for category in lowered_categories):
+        return True
+
+    return False
 
 
 # ========== WEATHER MODIFIER ==========
@@ -183,6 +281,8 @@ def standardize_recommendation(
     price: Optional[str] = None,
     image_url: Optional[str] = None,
     datetime_str: Optional[str] = None,
+    category_label: Optional[str] = None,
+    match_score: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Create a standardized recommendation item.
@@ -199,6 +299,8 @@ def standardize_recommendation(
         "price": price,
         "image_url": image_url,
         "datetime": datetime_str,
+        "category_label": category_label,
+        "match_score": match_score,
     }
 
 
@@ -274,13 +376,15 @@ class PlannerRecommendationService:
         weather = await get_weather_forecast(start_date, end_date)
         is_rainy = weather.get("is_rainy", False)
         
-        # Modify queries based on weather
-        tomtom_queries = apply_weather_modifier(vibe_config["tomtom_queries"], is_rainy)
+        # Use more specific restaurant/activity query buckets for each vibe
+        priorities = CATEGORY_PRIORITIES.get(vibe_key, CATEGORY_PRIORITIES["city_explorer"])
+        restaurant_queries = apply_weather_modifier(priorities["restaurant_queries"], is_rainy)
+        activity_queries = apply_weather_modifier(priorities["activity_queries"], is_rainy)
         ticketmaster_keywords = apply_weather_modifier(vibe_config["ticketmaster_keywords"], is_rainy)
         
         # Launch concurrent API calls
-        tomtom_restaurants_task = self._fetch_tomtom_async(tomtom_queries, budget, "restaurant")
-        tomtom_activities_task = self._fetch_tomtom_async(tomtom_queries, budget, "activity")
+        tomtom_restaurants_task = self._fetch_tomtom_async(restaurant_queries, budget, "restaurant", is_rainy=is_rainy)
+        tomtom_activities_task = self._fetch_tomtom_async(activity_queries, budget, "activity", is_rainy=is_rainy)
         ticketmaster_task = self._fetch_ticketmaster_async(ticketmaster_keywords, start_date, budget)
         eventbrite_task = self._fetch_eventbrite_async(start_date, budget)
         
@@ -449,6 +553,10 @@ class PlannerRecommendationService:
 
                 poi = entry.get("poi", {})
                 categories = [c.lower() for c in poi.get("categories", [])]
+                place_name = poi.get("name") or ""
+                if _is_blacklisted_entry(place_name, categories):
+                    continue
+
                 tier, tier_text = self._estimate_price_tier(query=query, categories=categories)
                 estimated_max_price = self._tier_to_max_price(tier)
                 if estimated_max_price > budget:
@@ -538,6 +646,46 @@ class PlannerRecommendationService:
             f"Relevant for {request_date.isoformat()} and tagged as {category_text}."
         )
 
+    def _calculate_raw_match_score(
+        self,
+        rating: float,
+        review_count: int,
+        category_label: str,
+        distance_meters: float,
+        is_rainy: bool,
+    ) -> float:
+        base_score = (rating * 50.0) + (math.log10(review_count + 1) * 30.0)
+        proximity_penalty = max(0.0, distance_meters) / 100.0
+        base_score -= proximity_penalty
+
+        if is_rainy:
+            if category_label == "Outdoors":
+                base_score *= 0.5
+            elif category_label == "Culture":
+                base_score *= 1.2
+
+        return max(base_score, 0.0)
+
+    def _normalize_match_scores(self, results: List[Dict[str, Any]]) -> None:
+        raw_scores = [item.get("match_score_raw", 0.0) for item in results]
+        if not raw_scores:
+            return
+
+        min_score = min(raw_scores)
+        max_score = max(raw_scores)
+        if max_score == min_score:
+            normalized_value = 80 if max_score > 0 else 1
+            for item in results:
+                item["match_score"] = normalized_value
+                item.pop("match_score_raw", None)
+            return
+
+        for item in results:
+            raw_score = item.get("match_score_raw", 0.0)
+            normalized = 1 + round(((raw_score - min_score) / (max_score - min_score)) * 99)
+            item["match_score"] = min(max(normalized, 1), 100)
+            item.pop("match_score_raw", None)
+
     # ========== ASYNC METHODS (NEW) ==========
 
     async def _fetch_tomtom_async(
@@ -545,6 +693,7 @@ class PlannerRecommendationService:
         queries: List[str],
         budget: int,
         result_type: str,
+        is_rainy: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Fetch places from TomTom API asynchronously.
@@ -553,6 +702,7 @@ class PlannerRecommendationService:
             queries: List of search queries (e.g., ["restaurant", "museum"])
             budget: Maximum price tier budget
             result_type: "restaurant" or "activity"
+            is_rainy: Whether weather is rainy or stormy
             
         Returns:
             List of standardized recommendation dictionaries
@@ -566,13 +716,16 @@ class PlannerRecommendationService:
         async with httpx.AsyncClient(timeout=15.0) as client:
             tasks = []
             for query in queries:
-                tasks.append(self._fetch_tomtom_query(client, query, budget, result_type, seen_ids))
+                tasks.append(self._fetch_tomtom_query(client, query, budget, result_type, seen_ids, is_rainy))
             
             query_results = await asyncio.gather(*tasks, return_exceptions=True)
             
             for query_result in query_results:
                 if not isinstance(query_result, Exception) and query_result:
                     results.extend(query_result)
+
+        self._normalize_match_scores(results)
+        results.sort(key=lambda item: item.get("match_score", 0), reverse=True)
 
         return results[:20]
 
@@ -583,6 +736,7 @@ class PlannerRecommendationService:
         budget: int,
         result_type: str,
         seen_ids: set,
+        is_rainy: bool,
     ) -> List[Dict[str, Any]]:
         """Fetch a single TomTom query."""
         results = []
@@ -612,12 +766,26 @@ class PlannerRecommendationService:
 
             poi = entry.get("poi", {})
             categories = [c.lower() for c in poi.get("categories", [])]
-            
+            place_name = poi.get("name") or ""
+            if _is_blacklisted_entry(place_name, categories):
+                continue
+
             tier, tier_text = self._estimate_price_tier(query=query, categories=categories)
             estimated_max_price = self._tier_to_max_price(tier)
-            
             if estimated_max_price > budget:
                 continue
+
+            rating = _safe_float(poi.get("rating") or entry.get("score"))
+            review_count = _safe_int(poi.get("reviewCount") or poi.get("reviews") or entry.get("reviews") or 0)
+            distance_meters = _safe_float(entry.get("dist") or entry.get("distance") or 0.0)
+            category_label = _map_category_label(categories)
+            raw_score = self._calculate_raw_match_score(
+                rating=rating,
+                review_count=review_count,
+                category_label=category_label,
+                distance_meters=distance_meters,
+                is_rainy=is_rainy,
+            )
 
             seen_ids.add(place_id)
             location = entry.get("address", {}).get("freeformAddress") or "Charlotte"
@@ -631,7 +799,10 @@ class PlannerRecommendationService:
                 location=location,
                 price=tier_text,
                 image_url=None,
+                category_label=category_label,
+                match_score=None,
             )
+            recommendation["match_score_raw"] = raw_score
             results.append(recommendation)
 
         return results

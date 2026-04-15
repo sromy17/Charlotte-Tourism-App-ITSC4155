@@ -48,6 +48,32 @@ export interface RecommendationsResponse {
 	error?: string;
 }
 
+export interface SavedItineraryRequest {
+	trip_name: string;
+	user_id: number;
+	saved_activities: {
+		items: RecommendationItemAPI[];
+		saved_at: string;
+	};
+}
+
+export interface SavedItineraryResponse {
+	id: number;
+	trip_name: string;
+	user_id: number;
+	saved_activities: {
+		items: RecommendationItemAPI[];
+		saved_at: string;
+	};
+}
+
+export const saveItinerary = async (
+	payload: SavedItineraryRequest,
+): Promise<SavedItineraryResponse> => {
+	const response = await api.post('/api/itineraries/', payload);
+	return response.data;
+};
+
 /**
  * Fetch recommendations from the backend
  * @param vibe - One of: food_and_culture, social_weekend, leisure_and_luxury, city_explorer

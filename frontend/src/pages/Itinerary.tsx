@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
@@ -6,7 +6,8 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import RecommendationCard from '../components/RecommendationCard';
 import { useExperienceStore, ItineraryNode, RecommendationItem } from '../state/experienceStore';
-import { RecommendationItemAPI } from '../services/api';
+import { useAuthStore } from '../state/authStore';
+import { RecommendationItemAPI, saveItinerary } from '../services/api';
 
 type PlanItem = RecommendationItemAPI | ItineraryNode;
 
@@ -78,6 +79,20 @@ const Itinerary: React.FC = () => {
     removeSelectedPlace,
     reorderSelectedPlaces,
   } = useExperienceStore();
+  const user = useAuthStore((state) => state.user);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const signedInUser = useMemo(() => {
+    if (user?.id) return user;
+    const stored = localStorage.getItem('user');
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  }, [user]);
 
   const activeStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'active'), [itineraryNodes]);
   const discoveryStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'discovery'), [itineraryNodes]);
@@ -87,6 +102,50 @@ const Itinerary: React.FC = () => {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const hasSelectedPlan = selectedPlaces.length > 0;
   const currentPlan: PlanItem[] = hasSelectedPlan ? selectedPlaces : activeStops;
+
+  const itineraryItemsToSave = hasSelectedPlan ? selectedPlaces : activeStops.map((item) => ({
+    id: item.id,
+    name: item.title,
+    type: 'saved',
+    api_source: 'manual',
+    description: item.description,
+    location: item.location,
+    price: item.cost,
+    image_url: undefined,
+    datetime: item.time,
+  }));
+
+  const handleSave = async () => {
+    if (!signedInUser?.id) {
+      setSaveMessage('Sign in first so we can save this itinerary to your account.');
+      return;
+    }
+
+    if (itineraryItemsToSave.length === 0) {
+      setSaveMessage('Please add at least one stop before saving your itinerary.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      await saveItinerary({
+        trip_name: `Charlotte Itinerary ${new Date().toLocaleDateString()}`,
+        user_id: Number(signedInUser.id),
+        saved_activities: {
+          items: itineraryItemsToSave,
+          saved_at: new Date().toISOString(),
+        },
+      });
+      setSaveMessage('Your itinerary has been saved successfully.');
+    } catch (error) {
+      console.error('[Itinerary] Save failed:', error);
+      setSaveMessage('Unable to save itinerary right now. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const mapRecommendationToApi = useCallback((item: RecommendationItem): RecommendationItemAPI => ({
     id: item.id,
@@ -141,7 +200,18 @@ const Itinerary: React.FC = () => {
             >
               View Map
             </Link>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving || itineraryItemsToSave.length === 0}
+              className="rounded-full border border-[#d6c08e] bg-[#d6c08e]/15 px-5 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition hover:bg-[#d6c08e]/25 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : 'Save Itinerary'}
+            </button>
           </div>
+          {saveMessage ? (
+            <p className="mt-4 text-sm text-[#f3e8cc]">{saveMessage}</p>
+          ) : null}
 
           {weather?.current_temp ? (
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-white/60">

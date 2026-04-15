@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import { useAuthStore } from '../state/authStore';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,6 +24,8 @@ const Login: React.FC = () => {
   }, []);
 
   const emailValid = useMemo(() => emailRegex.test(email.trim()), [email]);
+
+  const signIn = useAuthStore((state) => state.signIn);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,32 +53,15 @@ const Login: React.FC = () => {
         localStorage.removeItem('rememberedEmail');
       }
 
-      const response = await fetch('http://127.0.0.1:8000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          password: password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
+      const result = await signIn(trimmedEmail, password);
+      if (!result.success) {
+        throw new Error(result.message);
       }
 
-      // Optional: store user info
-      localStorage.setItem('user', JSON.stringify(data));
-
-      setStatus('Login successful');
-
+      setStatus(result.message);
       setTimeout(() => {
-        window.location.href = '/profile';
+        navigate('/profile');
       }, 700);
-
     } catch (err) {
       setError((err as Error).message || 'Unable to sign in right now.');
     } finally {

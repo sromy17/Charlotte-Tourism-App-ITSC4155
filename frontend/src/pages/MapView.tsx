@@ -35,16 +35,33 @@ const MapView: React.FC = () => {
   }, [user]);
 
   // 2. COMBINE DATA & CLEAN COORDINATES
+  // 2. COMBINE DATA & CLEAN COORDINATES
   const finalLocations = useMemo(() => {
-    const source = selectedPlaces.length > 0 ? selectedPlaces : dbPlaces;
     
-    return source
+    const combined = [...selectedPlaces, ...dbPlaces];
+    
+    
+    const uniqueSource = Array.from(new Map(combined.map(item => [item.id, item])).values());
+    
+    const seenCoords = new Set<string>();
+    
+    return uniqueSource
       .map((item: any) => {
-        const rawLat = item.latitude ?? item.coordinates?.latitude ?? item.lat;
-        const rawLng = item.longitude ?? item.coordinates?.longitude ?? item.lng;
+        const rawLat = item.latitude ?? item.coordinates?.latitude ?? item.lat ?? 35.2271;
+        const rawLng = item.longitude ?? item.coordinates?.longitude ?? item.lng ?? -80.8431;
 
-        const lat = (rawLat !== null && rawLat !== undefined) ? Number(rawLat) : null;
-        const lng = (rawLng !== null && rawLng !== undefined) ? Number(rawLng) : null;
+        let lat = Number(rawLat);
+        let lng = Number(rawLng);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          let coordKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+          while (seenCoords.has(coordKey)) {
+            lat += (Math.random() - 0.5) * 0.002;
+            lng += (Math.random() - 0.5) * 0.002;
+            coordKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+          }
+          seenCoords.add(coordKey);
+        }
 
         return {
           id: item.id || Math.random().toString(),
@@ -54,8 +71,7 @@ const MapView: React.FC = () => {
           description: item.location || item.address || "Charlotte, NC"
         };
       })
-      // Filter out anything that would crash the map
-      .filter((loc) => loc.lat !== null && loc.lng !== null && !isNaN(loc.lat) && !isNaN(loc.lng));
+      .filter((loc) => !isNaN(loc.lat!) && !isNaN(loc.lng!));
   }, [selectedPlaces, dbPlaces]);
 
   // 3. INITIALIZE MAP

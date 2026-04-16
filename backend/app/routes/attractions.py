@@ -155,19 +155,24 @@ async def generate_itinerary(user_data: dict):
         try:
             search_url = (
                 f"https://api.tomtom.com/search/2/search/{quote(query)}.json"
-                f"?key={TT_KEY}&lat=35.2271&lon=-80.8431&radius=15000&limit=12"
+                f"?key={TT_KEY}&lat=35.2271&lon=-80.8431&radius=15000&limit=12&fields=position"
             )
             response = requests.get(search_url, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
             results = response.json().get("results", [])
 
             for result in results:
-                eta = get_eta(result["position"]["lat"], result["position"]["lon"])
+                position = result.get("position") or {}
+                latitude = float(position.get("lat", 0))
+                longitude = float(position.get("lon", 0))
+                eta = get_eta(latitude, longitude)
                 itinerary.append(
                     {
                         "id": result["id"],
                         "activity": result["poi"].get("name", query),
                         "location": result["address"]["freeformAddress"],
+                        "latitude": latitude,
+                        "longitude": longitude,
                         "drive_time": f"{eta} min",
                         "cost": "$$" if "restaurant" in str(result).lower() else "$",
                         "description": f"Custom result for your search: '{query}'.",
@@ -213,20 +218,25 @@ async def generate_itinerary(user_data: dict):
             category = "9376" if vibe == "indoor" else "8120"
             tt_url = (
                 "https://api.tomtom.com/search/2/categorySearch/charlotte.json"
-                f"?key={TT_KEY}&categorySet={category}&limit=6"
+                f"?key={TT_KEY}&categorySet={category}&limit=6&fields=position"
             )
             response = requests.get(tt_url, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
             tt_res = response.json().get("results", [])
 
             for result in tt_res:
+                position = result.get("position") or {}
+                latitude = float(position.get("lat", 0))
+                longitude = float(position.get("lon", 0))
                 itinerary.append(
                     {
                         "id": result["id"],
                         "activity": result["poi"]["name"],
                         "location": result["address"]["freeformAddress"],
+                        "latitude": latitude,
+                        "longitude": longitude,
                         "drive_time": "{0} min".format(
-                            get_eta(result["position"]["lat"], result["position"]["lon"])
+                            get_eta(latitude, longitude)
                         ),
                         "cost": "$",
                         "description": f"Top-rated {vibe} spot in Charlotte.",

@@ -165,9 +165,19 @@ export const useAuthStore = create<AuthStore>()(
         set({ loading: true, error: null });
 
         try {
-          // Placeholder endpoint for backend merge.
-          const response = await api.get('/api/itinerary/active');
-          const itinerary = response.data?.itinerary ?? response.data ?? null;
+          const user = JSON.parse(localStorage.getItem('user') || 'null');
+          if (!user?.id) {
+            set({
+              activeItinerary: null,
+              loading: false,
+              error: 'No signed-in user available to load itinerary.',
+            });
+            return;
+          }
+
+          const response = await api.get(`/api/itineraries/${user.id}`);
+          const itineraries = response.data ?? [];
+          const itinerary = Array.isArray(itineraries) ? itineraries[0] ?? null : itineraries;
 
           set({
             activeItinerary: itinerary,

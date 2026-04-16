@@ -29,6 +29,10 @@ export interface RecommendationItem {
   image?: string | null;
   type: string;
   source: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface PlannerRecommendationsResponse {
@@ -44,7 +48,6 @@ interface ExperienceStore {
   activeTaskId: string | null;
   itineraryNodes: ItineraryNode[];
   recommendations: PlannerRecommendationsResponse | null;
-  // New: Store the API response directly for component consumption
   apiRecommendations: RecommendationsResponse | null;
   selectedPlaces: RecommendationItemAPI[];
   loading: boolean;
@@ -67,102 +70,103 @@ interface ExperienceStore {
   setWeather: (weather: WeatherSnapshot | null) => void;
 }
 
-const seedNodes: ItineraryNode[] = [
-  {
-    id: 'node-1',
-    title: 'Morning Stroll at Romare Bearden Park',
-    location: 'Romare Bearden Park',
-    cost: '$',
-    driveTime: '10 min',
-    description: 'A relaxed and scenic start in the heart of Uptown.',
-    time: '09:00',
-    lane: 'active',
-    status: 'active',
+const emptyApiRecommendations: RecommendationsResponse = {
+  restaurants: [],
+  activities: [],
+  events: [],
+  vibe: '',
+  weather: {
+    is_rainy: false,
+    rain_probability: 0,
+    conditions: [],
   },
-  {
-    id: 'node-2',
-    title: 'Late Morning at The Mint Museum',
-    location: 'The Mint Museum',
-    cost: '$$',
-    driveTime: '14 min',
-    description: 'Beautiful galleries and calm pace before lunch.',
-    time: '11:15',
-    lane: 'active',
-    status: 'queued',
-  },
-  {
-    id: 'node-3',
-    title: 'South End Café & Gallery Walk',
-    location: 'South End',
-    cost: '$$',
-    driveTime: '12 min',
-    description: 'Casual discoveries with great coffee and local design.',
-    time: '14:00',
-    lane: 'discovery',
-    status: 'queued',
-  },
-  {
-    id: 'node-4',
-    title: 'Evening in NoDa',
-    location: 'NoDa Arts District',
-    cost: '$$',
-    driveTime: '18 min',
-    description: 'A vibrant close to the day with music and atmosphere.',
-    time: '19:30',
-    lane: 'discovery',
-    status: 'queued',
-  },
-];
+};
 
 export const useExperienceStore = create<ExperienceStore>((set) => ({
-  activeTaskId: 'node-1',
-  itineraryNodes: seedNodes,
+  activeTaskId: null,
+  itineraryNodes: [],
   recommendations: null,
-  apiRecommendations: null,
+  apiRecommendations: emptyApiRecommendations,
   selectedPlaces: [],
   loading: false,
   error: null,
   noResultsMessage: null,
   weather: null,
+
   setNodes: (nodes) => set({ itineraryNodes: nodes }),
   setRecommendations: (recommendations) => set({ recommendations }),
   setApiRecommendations: (recommendations) => set({ apiRecommendations: recommendations }),
   setSelectedPlaces: (selectedPlaces) => set({ selectedPlaces }),
-  addSelectedPlace: (place) =>
-    set((state) => ({
-      selectedPlaces: state.selectedPlaces.some((item) => item.id === place.id)
-        ? state.selectedPlaces
-        : [...state.selectedPlaces, place],
-    })),
+  
+    addSelectedPlace: (place) =>
+    set((state) => {
+      console.log("📍 STORE ATTEMPTING TO ADD:", place.name);
+      console.log("📍 DATA RECEIVED:", { 
+        lat: (place as any).latitude, 
+        lng: (place as any).longitude,
+        full_object: place 
+      });
+
+      const exists = state.selectedPlaces.some((item) => item.id === place.id);
+      
+      if (exists) {
+        console.warn("⚠️ Place already in itinerary");
+        return state;
+      }
+
+      return {
+        selectedPlaces: [...state.selectedPlaces, place],
+      };
+    }),
+
   removeSelectedPlace: (id) =>
     set((state) => ({
       selectedPlaces: state.selectedPlaces.filter((item) => item.id !== id),
     })),
+
   reorderSelectedPlaces: (selectedPlaces) => set({ selectedPlaces }),
+
+  // THE FIX IS HERE
   hydrateFromRecommendations: (response) => {
-    const prioritized = [...response.events, ...response.restaurants, ...response.activities];
-    const mappedNodes: ItineraryNode[] = prioritized.slice(0, 12).map((item, index) => ({
-      id: String(item.id),
-      title: item.name,
-      location: item.location,
-      cost: item.price || 'Price unavailable',
-      driveTime: 'ETA varies',
-      description: item.description,
-      time: item.datetime ? item.datetime.replace('T', ' ') : `${9 + index}:00`,
-      lane: index < 6 ? 'active' : 'discovery',
-      status: index === 0 ? 'active' : 'queued',
-    }));
+    // Helper to flatten coordinates so Itinerary.tsx can see them easily
+    const mapWithCoords = (item: any, defaultSource: string) => ({
+      ...item,
+      // PUT THEM AT TOP LEVEL
+      latitude: item.latitude || item.coordinates?.latitude || 35.2271,
+      longitude: item.longitude || item.coordinates?.longitude || -80.8431,
+      // KEEP THEM IN NESTED OBJECT FOR COMPATIBILITY
+      coordinates: {
+        latitude: item.latitude || item.coordinates?.latitude || 35.2271,
+        longitude: item.longitude || item.coordinates?.longitude || -80.8431,
+      },
+      api_source: item.source || defaultSource,
+      match_score: 95
+    });
+
+    const mappedRestaurants = response.restaurants.map(r => mapWithCoords(r, 'tomtom'));
+    const mappedActivities = response.activities.map(a => mapWithCoords(a, 'tomtom'));
+    const mappedEvents = response.events.map(e => mapWithCoords(e, 'ticketmaster'));
+
+    const totalCount = mappedRestaurants.length + mappedActivities.length + mappedEvents.length;
 
     set({
       recommendations: response,
-      itineraryNodes: mappedNodes,
-      activeTaskId: mappedNodes[0]?.id ?? null,
+      apiRecommendations: {
+        restaurants: mappedRestaurants,
+        activities: mappedActivities,
+        events: mappedEvents,
+        vibe: response.category,
+        weather: { is_rainy: false, rain_probability: 0, conditions: [] }
+      },
+      itineraryNodes: [], 
+      activeTaskId: null,
       noResultsMessage:
-        prioritized.length === 0
-          ? 'No recommendations matched your selected vibe, date, and budget. Try a wider budget or a nearby date.'
+        totalCount === 0
+          ? 'No recommendations matched your criteria.'
           : null,
     });
   },
+
   setActiveTask: (taskId) => set({ activeTaskId: taskId }),
   completeTask: (taskId) =>
     set((state) => ({

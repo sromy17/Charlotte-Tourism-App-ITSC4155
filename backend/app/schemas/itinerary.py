@@ -1,46 +1,42 @@
 from pydantic import BaseModel
-from typing import Any, Optional
-from datetime import datetime
+from typing import Any, Optional, List
 
-# 1. Models for activity payloads stored inside itinerary saved_activities
+# 1. Models for activity payloads
 class ItineraryAttraction(BaseModel):
+    id: str  # Frontend is sending String(item.id)
     name: str
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    address: Optional[str] = None
-    rating: Optional[float] = None
-    category: Optional[str] = None
-    description: Optional[str] = None
+    type: Optional[str] = "activity"
+    api_source: Optional[str] = "manual"
+    description: Optional[str] = ""
+    location: Optional[str] = "Charlotte, NC"
+    price: Optional[str] = "0"
+    image_url: Optional[str] = None
+    datetime: Optional[str] = None
+    latitude: float = 35.2271
+    longitude: float = -80.8431
+    time: Optional[str] = "12:00"
 
     class Config:
         extra = "allow"
-
+        from_attributes = True
 
 class ItinerarySavedActivities(BaseModel):
-    items: list[ItineraryAttraction]
+    items: List[ItineraryAttraction]
     saved_at: Optional[str] = None
 
     class Config:
         extra = "allow"
 
-
-# 2. The Base Schema (Shared properties)
 class ItineraryBase(BaseModel):
     trip_name: str
     saved_activities: ItinerarySavedActivities
 
-
-# 3. Schema for CREATING an itinerary (What the frontend sends us)
 class ItineraryCreate(ItineraryBase):
-    user_id: int  # We need to know which user this trip belongs to
+    user_id: int  
 
-
-# 4. Schema for RETURNING an itinerary (What we send back to the frontend)
 class ItineraryResponse(ItineraryBase):
     id: int
     user_id: int
-    # created_at: datetime  <-- Uncomment this if you have a created_at column in your database model!
 
     class Config:
-        # This is the magic line that tells Pydantic read SQLAlchemy database models!
         from_attributes = True

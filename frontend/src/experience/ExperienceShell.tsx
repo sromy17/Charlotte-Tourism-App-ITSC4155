@@ -26,6 +26,7 @@ export const ExperienceShell: React.FC = () => {
     setWeather,
     setSelectedPlaces,
     hydrateFromRecommendations,
+    setApiRecommendations,
   } = useExperienceStore();
   const {
     user,
@@ -65,6 +66,8 @@ export const ExperienceShell: React.FC = () => {
       ]);
 
       hydrateFromRecommendations(recommendations);
+      setApiRecommendations(recommendations as any);
+      console.log('STORE UPDATED WITH:', recommendations);
       setWeather(weather);
 
       const combinedItems = [
@@ -167,7 +170,7 @@ export const ExperienceShell: React.FC = () => {
                 key="selection-hub"
                 itinerary={activeItinerary}
                 userName={user?.name}
-                onResume={() => navigate('/map')}
+                onResume={() => navigate('/itinerary')}
                 onStartNew={handleStartNewSequence}
               />
             ) : (

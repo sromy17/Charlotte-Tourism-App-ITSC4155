@@ -20,31 +20,30 @@ api.interceptors.request.use((config) => {
 // ========== RECOMMENDATIONS API ==========
 
 export interface RecommendationItemAPI {
-	id: string;
-	name: string;
-	type: string;
-	api_source: string;
-	description: string;
-	location?: string;
-	price?: string;
-	image_url?: string;
-	datetime?: string;
-	coordinates?: {
-		latitude: number;
-		longitude: number;
-	};
+    id: string;
+    name: string;
+    type: string;
+    api_source: string;
+    description: string;
+    location?: string;
+    price?: string;
+    image_url?: string;
+    datetime?: string;
+    match_score?: number;
+    latitude?: number;
+    longitude?: number;
+    coordinates?: {
+        latitude: number;
+        longitude: number;
+    };
 }
 
 export interface RecommendationsResponse {
 	restaurants: RecommendationItemAPI[];
 	activities: RecommendationItemAPI[];
 	events: RecommendationItemAPI[];
-	vibe: string;
-	weather: {
-		is_rainy: boolean;
-		rain_probability: number;
-		conditions: string[];
-	};
+	vibe?: string;
+	weather?: any;
 	error?: string;
 }
 
@@ -102,5 +101,15 @@ export const fetchRecommendations = async (
 		throw error;
 	}
 };
+
+export const updateItinerary = async (
+  id: number,
+  payload: Partial<SavedItineraryRequest>
+): Promise<SavedItineraryResponse> => {
+  const response = await api.put(`/api/itineraries/${id}`, payload);
+  return response.data;
+};
+
+
 
 export default api;

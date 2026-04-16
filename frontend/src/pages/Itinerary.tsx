@@ -1,350 +1,165 @@
-import React, { useMemo, useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import RecommendationCard from '../components/RecommendationCard';
-import { useExperienceStore, ItineraryNode, RecommendationItem } from '../state/experienceStore';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useExperienceStore } from '../state/experienceStore';
 import { useAuthStore } from '../state/authStore';
-import { RecommendationItemAPI, saveItinerary } from '../services/api';
-
-type PlanItem = RecommendationItemAPI | ItineraryNode;
-
-type SortablePlanItemProps = {
-  item: RecommendationItemAPI;
-  index: number;
-  onRemove: () => void;
-};
-
-const SortablePlanItem: React.FC<SortablePlanItemProps> = ({ item, index, onRemove }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
-
-  return (
-    <motion.article
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
-      className="rounded-xl border border-white/20 bg-black/30 p-4"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-royal-emerald/20 text-royal-emerald font-semibold">
-            {index + 1}
-          </div>
-          <div>
-            <h2 className="text-2xl italic">{item.name}</h2>
-            <p className="mt-1 text-xs text-white/60">{item.location || 'Charlotte destination'}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white/80 hover:bg-white/10"
-          >
-            ↕
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200 hover:bg-red-500/20"
-          >
-            Remove
-          </button>
-        </div>
-      </div>
-
-      {item.description && <p className="mt-3 text-sm text-white/70">{item.description}</p>}
-      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-white/60">
-        {item.datetime && <span>{item.datetime.split('T')[0]}</span>}
-        {item.price && <span>{item.price}</span>}
-      </div>
-    </motion.article>
-  );
-};
+import { updateItinerary } from '../services/api';
+import RecommendationCard from '../components/RecommendationCard';
 
 const Itinerary: React.FC = () => {
-  const {
-    itineraryNodes,
-    selectedPlaces,
-    weather,
-    recommendations,
-    noResultsMessage,
-    addSelectedPlace,
-    removeSelectedPlace,
-    reorderSelectedPlaces,
-  } = useExperienceStore();
+  const { recommendations } = useExperienceStore();
   const user = useAuthStore((state) => state.user);
+  
+  const [dbPlan, setDbPlan] = useState<any[]>([]);
+  const [itineraryId, setItineraryId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showAddDrawer, setShowAddDrawer] = useState(false);
 
-  const signedInUser = useMemo(() => {
-    if (user?.id) return user;
-    const stored = localStorage.getItem('user');
-    if (!stored) return null;
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return null;
-    }
-  }, [user]);
+  const signedInUser = user || JSON.parse(localStorage.getItem('user') || '{}');
 
-  const activeStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'active'), [itineraryNodes]);
-  const discoveryStops = useMemo(() => itineraryNodes.filter((node) => node.lane === 'discovery'), [itineraryNodes]);
-  const events = recommendations?.events ?? [];
-  const restaurants = recommendations?.restaurants ?? [];
-  const activities = recommendations?.activities ?? [];
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const hasSelectedPlan = selectedPlaces.length > 0;
-  const currentPlan: PlanItem[] = hasSelectedPlan ? selectedPlaces : activeStops;
+  const convertTimeToMinutes = (timeString: string | undefined): number => {
+    if (!timeString) return 9999; 
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
 
-  const itineraryItemsToSave = hasSelectedPlan ? selectedPlaces : activeStops.map((item) => ({
-    id: item.id,
-    name: item.title,
-    type: 'saved',
-    api_source: 'manual',
-    description: item.description,
-    location: item.location,
-    price: item.cost,
-    image_url: undefined,
-    datetime: item.time,
-  }));
+  useEffect(() => {
+    const fetchLatest = async () => {
+      if (!signedInUser?.id) return;
+      try {
+        const res = await axios.get(`http://localhost:8000/api/itineraries/latest/${signedInUser.id}`);
+        if (res.data?.id) {
+          setItineraryId(res.data.id);
+          setDbPlan(res.data.saved_activities?.items || []);
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    };
+    fetchLatest();
+  }, [signedInUser?.id]);
 
-  const handleSave = async () => {
-    if (!signedInUser?.id) {
-      setSaveMessage('Sign in first so we can save this itinerary to your account.');
-      return;
-    }
+  const handleUpdateTime = (idx: number, newTime: string) => {
+    const updated = [...dbPlan];
+    updated[idx] = { ...updated[idx], time: newTime };
+    const sorted = updated.sort((a, b) => convertTimeToMinutes(a.time) - convertTimeToMinutes(b.time));
+    setDbPlan(sorted);
+  };
 
-    if (itineraryItemsToSave.length === 0) {
-      setSaveMessage('Please add at least one stop before saving your itinerary.');
-      return;
-    }
+  const handleRemoveSpot = (idx: number) => {
+    setDbPlan(dbPlan.filter((_, i) => i !== idx));
+  };
 
+  const saveChanges = async () => {
+    if (!itineraryId || !signedInUser?.id) return;
     setIsSaving(true);
-    setSaveMessage(null);
-
     try {
-      await saveItinerary({
-        trip_name: `Charlotte Itinerary ${new Date().toLocaleDateString()}`,
+      await updateItinerary(itineraryId, {
+        trip_name: "Charlotte Journey",
         user_id: Number(signedInUser.id),
         saved_activities: {
-          items: itineraryItemsToSave,
-          saved_at: new Date().toISOString(),
-        },
+          items: dbPlan,
+          saved_at: new Date().toISOString()
+        }
       });
-      setSaveMessage('Your itinerary has been saved successfully.');
-    } catch (error) {
-      console.error('[Itinerary] Save failed:', error);
-      setSaveMessage('Unable to save itinerary right now. Please try again.');
+      setIsEditing(false);
+    } catch (err) {
+      alert("Failed to sync changes.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const mapRecommendationToApi = useCallback((item: RecommendationItem): RecommendationItemAPI => ({
-    id: item.id,
-    name: item.name,
-    type: item.type,
-    api_source: item.source,
-    description: item.description,
-    location: item.location,
-    price: item.price ?? undefined,
-    image_url: item.image ?? undefined,
-    datetime: item.datetime ?? undefined,
-    coordinates: undefined,
-  }), []);
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const oldIndex = selectedPlaces.findIndex((item) => item.id === String(active.id));
-      const newIndex = selectedPlaces.findIndex((item) => item.id === String(over.id));
-      if (oldIndex < 0 || newIndex < 0) return;
-      reorderSelectedPlaces(arrayMove(selectedPlaces, oldIndex, newIndex));
-    },
-    [selectedPlaces, reorderSelectedPlaces],
-  );
-
-  const isAdded = useCallback(
-    (item: RecommendationItemAPI) => selectedPlaces.some((place) => place.id === item.id),
-    [selectedPlaces],
-  );
+  const discoveryItems = useMemo(() => {
+    return [
+      ...(recommendations?.activities || []),
+      ...(recommendations?.restaurants || []),
+      ...(recommendations?.events || [])
+    ];
+  }, [recommendations]);
 
   return (
-    <div className="min-h-[calc(100vh-7rem)] bg-[#020202] px-6 pb-20 text-[#F6F3EB]">
-      <div className="mx-auto max-w-6xl">
-        <header className="luxury-panel p-7">
-          <p className="luxury-label text-[#79bfa0]">Itinerary Overview</p>
-          <h1 className="mt-3 text-5xl italic">Your Charlotte day, beautifully organized</h1>
-          <p className="mt-2 max-w-3xl text-white/70">
-            This view keeps your schedule and flexible discoveries in one place, with a premium layout built for quick decisions.
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link
-              to="/plan"
-              className="rounded-full border border-[#79bfa0] bg-[#004D2C]/40 px-5 py-2 font-mono text-[11px] uppercase tracking-[0.2em] hover:bg-[#004D2C]/6"
-            >
-              Open Live Planner
-            </Link>
-            <Link
-              to="/map"
-              className="rounded-full border border-white/30 px-5 py-2 font-mono text-[11px] uppercase tracking-[0.2em] hover:border-[#d6c08e]/60"
-            >
-              View Map
-            </Link>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving || itineraryItemsToSave.length === 0}
-              className="rounded-full border border-[#d6c08e] bg-[#d6c08e]/15 px-5 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition hover:bg-[#d6c08e]/25 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSaving ? 'Saving...' : 'Save Itinerary'}
-            </button>
+    <div className="min-h-screen bg-[#020202] text-white flex justify-center">
+      <div className="w-full max-w-2xl border-x border-white/10 bg-[#081311]/20 backdrop-blur-xl flex flex-col min-h-screen">
+        <header className="p-8 border-b border-white/10 flex justify-between items-end">
+          <div>
+            <p className="text-[#79bfa0] text-[10px] uppercase tracking-[0.3em] mb-1">Charlotte Journey</p>
+            <h1 className="text-3xl italic font-serif">The Schedule</h1>
           </div>
-          {saveMessage ? (
-            <p className="mt-4 text-sm text-[#f3e8cc]">{saveMessage}</p>
-          ) : null}
-
-          {weather?.current_temp ? (
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-white/60">
-              Current weather: {weather.current_temp}° · {weather.description}
-            </p>
-          ) : null}
+          <button 
+            onClick={() => isEditing ? saveChanges() : setIsEditing(true)}
+            className="px-6 py-2 rounded-full border border-[#d6c08e]/30 text-[10px] font-mono uppercase tracking-widest text-[#d6c08e] hover:bg-[#d6c08e] hover:text-black transition-all"
+          >
+            {isSaving ? 'Syncing...' : isEditing ? 'Save Layout' : 'Edit Day'}
+          </button>
         </header>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          <section className="luxury-panel p-5">
-            <p className="luxury-label">{hasSelectedPlan ? 'Current Plan' : 'Planned Stops'}</p>
-            <div className="mt-3 space-y-3">
-              {currentPlan.length === 0 ? (
-                <p className="text-sm text-white/60">No planned stops yet. Start in the planner to generate your route.</p>
-              ) : hasSelectedPlan ? (
-                <div className="space-y-3">
-                  <p className="text-xs text-white/50">Drag to reorder your selected stops, or remove any item as needed.</p>
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={selectedPlaces.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-                      <div className="space-y-3">
-                        {selectedPlaces.map((item, index) => (
-                          <SortablePlanItem key={item.id} item={item} index={index} onRemove={() => removeSelectedPlace(item.id)} />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
-                </div>
-              ) : (
-                currentPlan.map((item, index) => {
-                  const title = 'name' in item ? item.name : item.title;
-                  const time = 'datetime' in item ? item.datetime : 'time' in item ? item.time : undefined;
-                  const location = item.location;
-                  const description = item.description;
-                  const price = 'price' in item ? item.price : undefined;
-
-                  return (
-                    <motion.article
-                      key={item.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, amount: 0.3 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="rounded-xl border border-white/20 bg-black/30 p-4"
-                    >
-                      <h2 className="text-2xl italic">{title}</h2>
-                      {time && (
-                        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">{time}</p>
-                      )}
-                      <p className="mt-1 text-sm text-white/70">{location}</p>
-                      {price && <p className="mt-1 text-xs text-white/55">{price}</p>}
-                      {description && <p className="mt-2 text-xs text-white/55">{description}</p>}
-                    </motion.article>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
-          <section className="luxury-panel p-5">
-            <p className="luxury-label">Optional Discoveries</p>
-            <div className="mt-3 space-y-3">
-              {discoveryStops.length === 0 ? (
-                <p className="text-sm text-white/60">No discovery suggestions yet. Generate your plan to unlock nearby extras.</p>
-              ) : (
-                discoveryStops.map((node, index) => (
-                  <motion.article
-                    key={node.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="rounded-xl border border-white/20 bg-black/30 p-4"
-                  >
-                    <h2 className="text-2xl italic">{node.title}</h2>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">{node.time} · {node.driveTime}</p>
-                    <p className="mt-1 text-sm text-white/70">{node.location}</p>
-                    <p className="mt-2 text-xs text-white/55">{node.description}</p>
-                  </motion.article>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-
-        <section className="luxury-panel mt-6 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="luxury-label text-[#79bfa0]">Discovery Results</p>
-            {recommendations && (
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
-                {recommendations.category} · {recommendations.date} · ${recommendations.budget}
-              </p>
-            )}
-          </div>
-
-          {noResultsMessage ? (
-            <div className="mt-3 rounded-2xl border border-[#d6c08e]/35 bg-[#1a1404]/45 p-4">
-              <p className="text-lg italic text-[#f3e8cc]">No matching recommendations right now</p>
-              <p className="mt-2 text-sm text-[#e7ddc5]/85">{noResultsMessage}</p>
-            </div>
+        <div className="flex-1 overflow-y-auto p-8 space-y-10 luxury-scroll">
+          {dbPlan.length === 0 ? (
+            <div className="py-20 text-center text-white/20 italic">Timeline empty.</div>
           ) : (
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              {[
-                { title: 'Events', items: events },
-                { title: 'Food / Restaurants', items: restaurants },
-                { title: 'Activities / Places', items: activities },
-              ].map((group) => (
-                <article key={group.title} className="rounded-xl border border-white/20 bg-black/30 p-4">
-                  <h2 className="text-xl italic">{group.title}</h2>
-                  <div className="mt-3 space-y-2">
-                    {group.items.length === 0 ? (
-                      <p className="text-xs text-white/55">No results in this section for the selected budget/date.</p>
-                    ) : (
-                      group.items.slice(0, 5).map((item, itemIndex) => {
-                        const apiItem = mapRecommendationToApi(item);
-                        return (
-                          <RecommendationCard
-                            key={item.id}
-                            item={apiItem}
-                            index={itemIndex}
-                            variant="compact"
-                            onAdd={() => addSelectedPlace(apiItem)}
-                            isAdded={isAdded(apiItem)}
-                          />
-                        );
-                      })
+            dbPlan.map((item, idx) => (
+              <motion.div layout key={item.id || idx} className="relative flex gap-8 group">
+                {idx !== dbPlan.length - 1 && (
+                  <div className="absolute left-[19px] top-10 h-full w-[1px] bg-gradient-to-b from-[#79bfa0]/40 to-transparent" />
+                )}
+                <div className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#79bfa0]/30 bg-[#020202] text-[10px] font-bold text-[#79bfa0]">
+                  {item.time || '—'}
+                </div>
+                <div className="flex-1 min-w-0 pb-6 border-b border-white/5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-serif italic truncate">{item.name}</h3>
+                    {isEditing && (
+                      <button onClick={() => handleRemoveSpot(idx)} className="text-red-400/40 hover:text-red-400 text-[9px] font-mono uppercase">Remove</button>
                     )}
                   </div>
-                </article>
-              ))}
-            </div>
+                  <p className="text-white/40 text-xs mb-4">{item.address || item.location}</p>
+                  {isEditing && (
+                    <input 
+                      type="time" 
+                      value={item.time || ""}
+                      onChange={(e) => handleUpdateTime(idx, e.target.value)}
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-[#79bfa0] outline-none"
+                    />
+                  )}
+                </div>
+              </motion.div>
+            ))
           )}
-        </section>
+          <button 
+            onClick={() => setShowAddDrawer(true)}
+            className="w-full mt-10 rounded-2xl border border-dashed border-white/10 py-8 text-[10px] font-mono uppercase tracking-[0.3em] text-white/20 hover:text-[#79bfa0]"
+          >
+            + Add New Experience
+          </button>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {showAddDrawer && (
+          <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed bottom-0 left-0 right-0 h-[70vh] bg-[#020202] border-t border-[#79bfa0]/30 z-50 p-10 shadow-2xl">
+            <div className="max-w-5xl mx-auto h-full flex flex-col">
+              <div className="flex justify-between items-center mb-10 text-xl luxury-label text-white">Nearby Recommendations <button onClick={() => setShowAddDrawer(false)}>✕</button></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 overflow-y-auto">
+                {discoveryItems.map((item: any) => (
+                  <RecommendationCard 
+                    key={item.id} 
+                    item={item} 
+                    onAdd={() => {
+                      const sorted = [...dbPlan, { ...item, time: '12:00' }].sort((a, b) => convertTimeToMinutes(a.time) - convertTimeToMinutes(b.time));
+                      setDbPlan(sorted);
+                      setShowAddDrawer(false);
+                      setIsEditing(true);
+                    }}
+                    isAdded={dbPlan.some(p => p.id === item.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

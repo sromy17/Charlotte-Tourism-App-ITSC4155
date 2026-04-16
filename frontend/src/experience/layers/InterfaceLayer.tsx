@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useNavigate } from 'react-router-dom'; 
 import { SelectionPayload } from '../../state/experienceMachine';
 import { useExperienceStore } from '../../state/experienceStore';
 import { useAuthStore } from '../../state/authStore';
@@ -63,19 +64,17 @@ const SortablePlanItem: React.FC<SortablePlanItemProps> = ({ item, index, onRemo
 };
 
 export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
+  const navigate = useNavigate(); 
   const {
     itineraryNodes,
-    activeTaskId,
-    setActiveTask,
-    completeTask,
     weather,
     recommendations,
-    noResultsMessage,
     selectedPlaces,
     addSelectedPlace,
     removeSelectedPlace,
     reorderSelectedPlaces,
   } = useExperienceStore();
+  
   const user = useAuthStore((state) => state.user);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -91,95 +90,81 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
     }
   }, [user]);
 
-  const itineraryItemsToSave = useMemo(() => {
-    if (selectedPlaces.length > 0) {
-      return selectedPlaces;
-    }
+const itineraryItemsToSave = useMemo(() => {
+  return selectedPlaces.map((item: any) => ({
+    id: String(item.id),
+    name: item.name || 'Unnamed Spot',
+    type: item.type || 'activity',
+    api_source: item.api_source || 'manual',
+    description: item.description || '',
+    location: item.location || item.address || 'Charlotte, NC',
+    price: String(item.price || '0'),
+    image_url: item.image_url || undefined,
+    datetime: item.datetime || new Date().toISOString(),
+    latitude: Number(item.latitude || item.coordinates?.latitude || 35.2271),
+    longitude: Number(item.longitude || item.coordinates?.longitude || -80.8431), // ✅ FIXED SPELING
+    time: item.time || '12:00'
+  }));
+}, [selectedPlaces]); 
 
-    return itineraryNodes.map((node) => ({
-      id: node.id,
-      name: node.title,
-      type: 'saved',
-      api_source: 'manual',
-      description: node.description,
-      location: node.location,
-      price: node.cost,
-      image_url: undefined,
-      datetime: node.time,
-    }));
-  }, [selectedPlaces, itineraryNodes]);
+const handleSaveItinerary = async () => {
+  if (!signedInUser?.id) {
+    setSaveMessage('Sign in first so your itinerary is saved to your account.');
+    return;
+  }
 
-  const handleSaveItinerary = async () => {
-    if (!signedInUser?.id) {
-      setSaveMessage('Sign in first so your itinerary is saved to your account.');
-      return;
-    }
+  if (itineraryItemsToSave.length === 0) {
+    setSaveMessage('Add stops before saving your itinerary.');
+    return;
+  }
 
-    if (itineraryItemsToSave.length === 0) {
-      setSaveMessage('Add stops before saving your itinerary.');
-      return;
-    }
+  setIsSaving(true);
+  setSaveMessage(null);
 
-    setIsSaving(true);
-    setSaveMessage(null);
+  try {
+    await saveItinerary({
+      trip_name: `Charlotte Journey`,
+      user_id: Number(signedInUser.id),
+      saved_activities: {
+        items: itineraryItemsToSave as any, 
+        saved_at: new Date().toISOString(),
+      },
+    });
 
-    try {
-      await saveItinerary({
-        trip_name: `Charlotte Itinerary ${new Date().toLocaleDateString()}`,
-        user_id: Number(signedInUser.id),
-        saved_activities: {
-          items: itineraryItemsToSave,
-          saved_at: new Date().toISOString(),
-        },
-      });
-      setSaveMessage('Saved itinerary to your account.');
-    } catch (error) {
-      console.error('[InterfaceLayer] Save itinerary failed', error);
-      setSaveMessage('Unable to save itinerary. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    setSaveMessage('Success! Transporting to your itinerary...');
+    setTimeout(() => navigate('/itinerary'), 600); 
 
-  const activeTasks = itineraryNodes.filter((node) => node.lane === 'active');
-  const discoveryNodes = itineraryNodes.filter((node) => node.lane === 'discovery');
-
-  const focusedNode = useMemo(
-    () => itineraryNodes.find((node) => node.id === activeTaskId) ?? itineraryNodes[0],
-    [itineraryNodes, activeTaskId],
-  );
-
-  const mapPoints = useMemo(
-    () =>
-      itineraryNodes.map((node, index) => ({
-        id: node.id,
-        top: `${18 + (index % 4) * 18}%`,
-        left: `${12 + ((index * 17) % 72)}%`,
-      })),
-    [itineraryNodes],
-  );
-
-  const events = recommendations?.events ?? [];
-  const restaurants = recommendations?.restaurants ?? [];
-  const activities = recommendations?.activities ?? [];
+  } catch (error) {
+    console.error('[InterfaceLayer] Save failed', error);
+    setSaveMessage('Unable to save itinerary. Please try again.');
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const availableItems = useMemo<RecommendationItemAPI[]>(
-    () =>
-      [...events, ...restaurants, ...activities].map((item) => ({
-        id: item.id,
-        name: item.name,
-        type: item.type,
-        api_source: item.source,
-        description: item.description,
-        location: item.location,
-        price: item.price ?? undefined,
-        image_url: item.image ?? undefined,
-        datetime: item.datetime ?? undefined,
-        coordinates: (item as any).coordinates ?? undefined,
-      })),
-    [events, restaurants, activities],
-  );
+  
+  // Fixed the dependency issue by moving logic inside useMemo
+  const availableItems = useMemo<RecommendationItemAPI[]>(() => {
+    const events = recommendations?.events ?? [];
+    const restaurants = recommendations?.restaurants ?? [];
+    const activities = recommendations?.activities ?? [];
+
+    return [...events, ...restaurants, ...activities].map((item: any) => ({
+      id: String(item.id), // Ensure ID is a string
+      name: item.name,
+      type: item.type,
+      api_source: item.source || 'api',
+      description: item.description || '',
+      location: item.location || '',
+      price: String(item.price ?? '0'), // Ensure price is a string
+      image_url: item.image ?? item.image_url ?? undefined,
+      datetime: item.datetime ?? undefined,
+      // ✅ Explicitly set these here
+      latitude: Number(item.latitude || item.coordinates?.latitude || 35.2271),
+      longitude: Number(item.longitude || item.coordinates?.longitude || -80.8431),
+    }));
+  }, [recommendations]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -211,225 +196,78 @@ export const InterfaceLayer: React.FC<Props> = ({ selections, onReset }) => {
               Today in Charlotte: {weather.current_temp}° · {weather.description}
             </p>
           )}
-          {saveMessage && (
-            <p className="mt-2 text-xs text-white/70">{saveMessage}</p>
-          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={handleSaveItinerary}
-            disabled={isSaving}
-            className="rounded-lg border border-[#d6c08e] bg-[#d6c08e]/15 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] transition hover:bg-[#d6c08e]/25 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSaving ? 'Saving itinerary...' : 'Save Itinerary'}
-          </button>
-          <button
             onClick={onReset}
-            className="rounded-lg border border-white/30 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] hover:border-[#d6c08e]/65"
+            className="rounded-lg border border-white/30 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] hover:border-[#d6c08e]/65 transition-colors"
           >
             Start Over
           </button>
         </div>
       </header>
 
-      <div className="grid min-h-0 gap-5 lg:grid-cols-[300px_1fr_320px]">
-        <aside className="luxury-panel luxury-scroll min-h-0 overflow-auto p-4">
-          <h3 className="luxury-label">On Your Schedule</h3>
-          <div className="mt-3 space-y-3">
-            {activeTasks.map((task, index) => (
-              <motion.button
-                key={task.id}
-                onClick={() => setActiveTask(task.id)}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ delay: index * 0.05, duration: 0.35 }}
-                className={`w-full rounded-xl border px-3 py-3 text-left ${
-                  activeTaskId === task.id ? 'border-[#79bfa0] bg-[#004D2C]/30' : 'border-white/15 hover:border-[#d6c08e]/35'
-                }`}
-              >
-                <p className="text-sm italic text-[#F6F3EB]">{task.title}</p>
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">{task.time}</p>
-                <p className="mt-1 text-xs text-white/50">{task.location}</p>
-              </motion.button>
+      <div className="grid min-h-0 gap-5 lg:grid-cols-[1.6fr_1fr]">
+        <div className="luxury-panel luxury-scroll min-h-0 overflow-auto p-4 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className="luxury-label text-[#79bfa0]">Available Picks</p>
+            <span className="rounded-full bg-white/5 px-3 py-2 text-[11px] text-white/70">{availableItems.length} options</span>
+          </div>
+          <div className="grid gap-4">
+            {availableItems.map((item) => (
+              <RecommendationCard
+                key={item.id}
+                item={item}
+                onAdd={() => addSelectedPlace(item)}
+                isAdded={selectedPlaces.some((selected) => selected.id === item.id)}
+              />
             ))}
           </div>
-        </aside>
+        </div>
 
-        <div className="luxury-panel relative p-5">
-          <div className="absolute inset-0 rounded-[28px] thin-border border border-white/15" />
-          <p className="luxury-label">Living Map Canvas</p>
+        <div className="luxury-panel flex flex-col min-h-0 overflow-hidden bg-[#020202]/95 border-white/10">
+          <div className="p-4 border-b border-white/10 flex items-start justify-between">
+            <p className="luxury-label text-[#79bfa0]">My Itinerary</p>
+            <span className="rounded-full bg-white/5 px-3 py-2 text-[11px] text-white/70">{selectedPlaces.length} stops</span>
+          </div>
 
-          <div className="relative mt-4 h-[calc(100%-28px)] overflow-hidden rounded-3xl border border-[#79bfa0]/25 bg-gradient-to-br from-[#0f2a1f] via-[#081510] to-[#020202] p-4">
-            <div
-              className="absolute inset-0 opacity-[0.15]"
-              style={{
-                backgroundImage:
-                  'linear-gradient(rgba(255,255,255,0.2) 0.5px, transparent 0.5px), linear-gradient(90deg, rgba(255,255,255,0.2) 0.5px, transparent 0.5px)',
-                backgroundSize: '42px 42px',
-              }}
-            />
+          <div className="flex-1 overflow-auto p-4 space-y-3 luxury-scroll">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={selectedPlaces.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+                {selectedPlaces.length === 0 ? (
+                  <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-white/60">
+                    Add items to start building.
+                  </div>
+                ) : (
+                  selectedPlaces.map((item, idx) => (
+                    <SortablePlanItem
+                      key={item.id}
+                      item={item}
+                      index={idx}
+                      onRemove={() => removeSelectedPlace(item.id)}
+                    />
+                  ))
+                )}
+              </SortableContext>
+            </DndContext>
+          </div>
 
-            <div className="relative z-10 flex h-full flex-col">
-              <p className="text-sm text-white/80">
-                {focusedNode ? `Now highlighting: ${focusedNode.title}` : 'Choose a stop to preview your route'}
+          <div className="p-4 bg-black/40 border-t border-white/10 flex flex-col gap-3">
+            {saveMessage && (
+              <p className="text-[10px] text-center text-[#79bfa0] animate-pulse font-mono tracking-wider">
+                {saveMessage}
               </p>
-              <p className="mt-1 text-xs text-white/55">Smooth transitions between your planned highlights and optional discoveries.</p>
-
-              <div className="relative mt-5 flex-1">
-                {mapPoints.map((point, index) => {
-                  const active = point.id === focusedNode?.id;
-                  return (
-                    <motion.button
-                      key={point.id}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: active ? 1.14 : 1 }}
-                      transition={{ delay: index * 0.05, duration: 0.35 }}
-                      style={{ top: point.top, left: point.left }}
-                      onClick={() => setActiveTask(point.id)}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border px-2 py-1 text-[10px] ${
-                        active
-                          ? 'border-[#d6c08e] bg-[#d6c08e]/25 text-[#F6F3EB] shadow-[0_0_22px_rgba(214,192,142,0.4)]'
-                          : 'border-white/35 bg-black/35 text-white/80 hover:border-[#79bfa0]'
-                      }`}
-                    >
-                      ●
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                {itineraryNodes.slice(0, 4).map((node, index) => (
-                  <motion.div
-                    key={node.id}
-                    initial={{ opacity: 0, y: 14 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.4 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="rounded-lg border border-white/20 bg-black/35 px-3 py-2"
-                  >
-                    <p className="text-sm text-[#F6F3EB]">{node.title}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/60">{node.time}</p>
-                    <p className="mt-1 text-xs text-white/50">{node.driveTime} · {node.cost}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+            )}
+            <button
+              onClick={handleSaveItinerary}
+              disabled={isSaving}
+              className="w-full rounded-xl border border-[#79bfa0] bg-[#79bfa0]/10 py-4 font-mono text-xs uppercase tracking-[0.3em] text-[#79bfa0] transition-all hover:bg-[#79bfa0] hover:text-black shadow-[0_0_20px_rgba(121,191,160,0.1)] active:scale-[0.98]"
+            >
+              {isSaving ? 'Locking In...' : 'Save & View Itinerary'}
+            </button>
           </div>
         </div>
-
-        <aside className="luxury-panel luxury-scroll min-h-0 overflow-auto p-4">
-          <h3 className="luxury-label">Nice Extras Nearby</h3>
-          <div className="mt-3 space-y-3">
-            {discoveryNodes.map((node, index) => (
-              <motion.div
-                key={node.id}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ delay: index * 0.05, duration: 0.35 }}
-                className="rounded-xl border border-white/15 px-3 py-3"
-              >
-                <p className="text-sm italic">{node.title}</p>
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/65">{node.time}</p>
-                <p className="mt-1 text-xs text-white/50">{node.location}</p>
-                <p className="mt-2 text-xs text-white/45">{node.description}</p>
-                <button
-                  onClick={() => completeTask(node.id)}
-                  className="mt-2 rounded-md border border-white/25 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.2em] hover:border-[#79bfa0]"
-                >
-                  Add to Done
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </aside>
       </div>
-
-      <section className="luxury-panel luxury-scroll min-h-0 overflow-auto p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="luxury-label text-[#79bfa0]">Filtered Results</p>
-            <h3 className="mt-1 text-2xl italic">Build your itinerary from the recommendations below</h3>
-          </div>
-          {recommendations && (
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
-              {recommendations.category} · {recommendations.date} · ${recommendations.budget}
-            </p>
-          )}
-        </div>
-
-        {noResultsMessage ? (
-          <div className="mt-4 rounded-2xl border border-[#d6c08e]/35 bg-[#1a1404]/45 p-5">
-            <p className="text-lg italic text-[#f3e8cc]">No perfect matches found yet</p>
-            <p className="mt-2 text-sm text-[#e7ddc5]/85">{noResultsMessage}</p>
-            <p className="mt-2 text-xs text-[#d6c08e]">Tip: Try a nearby date, a broader vibe, or a slightly higher budget limit.</p>
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-            <div className="space-y-4">
-              <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#79bfa0]">Available Picks</p>
-                    <p className="mt-2 text-sm text-white/70">Add attractions to your itinerary directly from the recommendation list.</p>
-                  </div>
-                  <span className="rounded-full bg-white/5 px-3 py-2 text-[11px] text-white/70">{availableItems.length} options</span>
-                </div>
-
-                <div className="mt-4 grid gap-4">
-                  {availableItems.length === 0 ? (
-                    <div className="rounded-3xl border border-white/10 bg-black/25 p-4 text-sm text-white/60">
-                      No recommendations available yet. Generate a new plan to start building.
-                    </div>
-                  ) : (
-                    availableItems.map((item) => (
-                      <RecommendationCard
-                        key={item.id}
-                        item={item}
-                        onAdd={() => addSelectedPlace(item)}
-                        isAdded={selectedPlaces.some((selected) => selected.id === item.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-[#020202]/95 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="luxury-label text-[#79bfa0]">My Itinerary</p>
-                  <p className="mt-2 text-sm text-white/70">Drag to reorder the stops and lock in the order you want.</p>
-                </div>
-                <span className="rounded-full bg-white/5 px-3 py-2 text-[11px] text-white/70">{selectedPlaces.length} stops</span>
-              </div>
-
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={selectedPlaces.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-                  <div className="mt-4 space-y-3">
-                    {selectedPlaces.length === 0 ? (
-                      <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-white/60">
-                        Add items from the recommendation cards to start building your day.
-                      </div>
-                    ) : (
-                      selectedPlaces.map((item, idx) => (
-                        <SortablePlanItem
-                          key={item.id}
-                          item={item}
-                          index={idx}
-                          onRemove={() => removeSelectedPlace(item.id)}
-                        />
-                      ))
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </div>
-          </div>
-        )}
-      </section>
     </motion.section>
   );
 };

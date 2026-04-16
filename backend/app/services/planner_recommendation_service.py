@@ -150,8 +150,10 @@ BLACKLIST = {
 }
 
 
-def _safe_float(value: Any, default: float = 0.0) -> float:
+def _safe_float(value: Any, default: float = CHARLOTTE_LAT) -> float:
     try:
+        if value is None or str(value).strip().lower() in ["", "none"]:
+            return default
         return float(value)
     except (TypeError, ValueError):
         return default
@@ -278,6 +280,8 @@ def standardize_recommendation(
     api_source: str,
     description: str,
     location: Optional[str] = None,
+    latitude: float = 0.0,
+    longitude: float = 0.0,
     price: Optional[str] = None,
     image_url: Optional[str] = None,
     datetime_str: Optional[str] = None,
@@ -296,6 +300,8 @@ def standardize_recommendation(
         "api_source": api_source,
         "description": description,
         "location": location,
+        "latitude": latitude,
+        "longitude": longitude,
         "price": price,
         "image_url": image_url,
         "datetime": datetime_str,
@@ -494,6 +500,10 @@ class PlannerRecommendationService:
             images = event.get("images", [])
             image = images[0].get("url") if images else None
 
+            venue_location = venue.get("location", {})
+            latitude = _safe_float(venue_location.get("latitude"), default=CHARLOTTE_LAT)
+            longitude = _safe_float(venue_location.get("longitude"), default=CHARLOTTE_LON)
+            
             recommendations.append(
                 RecommendationItem(
                     id=f"tm-{event.get('id', '')}",
@@ -503,6 +513,8 @@ class PlannerRecommendationService:
                     or "Live Charlotte event matched to your selected vibe.",
                     datetime=self._build_event_datetime(event),
                     location=location,
+                    latitude=latitude,   # Now uses the real Ticketmaster lat
+                    longitude=longitude, # Now uses the real Ticketmaster lng
                     price=price_text,
                     image=image,
                     type="event",
@@ -533,6 +545,7 @@ class PlannerRecommendationService:
                 "lon": CHARLOTTE_LON,
                 "radius": SEARCH_RADIUS_METERS,
                 "limit": 12,
+                "fields": "position",
             }
 
             try:
@@ -564,12 +577,20 @@ class PlannerRecommendationService:
 
                 seen_ids.add(place_id)
                 location = entry.get("address", {}).get("freeformAddress") or "Charlotte"
+                
+                # FIX: Renamed 'position' to 'pos' and used explicit lat/lon from TomTom
+                pos = entry.get("position", {})
+                latitude = _safe_float(pos.get("lat"), default=CHARLOTTE_LAT)
+                longitude = _safe_float(pos.get("lon"), default=CHARLOTTE_LON)
+                
                 recommendations_item = RecommendationItem(
                     id=f"tt-{place_id}",
                     name=poi.get("name") or query.title(),
                     description=self._build_place_description(query, categories, request_date),
                     datetime=request_date.isoformat(),
                     location=location,
+                    latitude=latitude,
+                    longitude=longitude,
                     price=tier_text,
                     image=None,
                     type=result_type,
@@ -749,6 +770,7 @@ class PlannerRecommendationService:
         }
 
         try:
+            params["fields"] = "position"
             response = await client.get(
                 f"https://api.tomtom.com/search/2/search/{query}%20charlotte.json",
                 params=params,
@@ -790,6 +812,11 @@ class PlannerRecommendationService:
             seen_ids.add(place_id)
             location = entry.get("address", {}).get("freeformAddress") or "Charlotte"
             
+            # FIX: Renamed 'position' to 'pos' to avoid conflict with the turtle import
+            pos = entry.get("position", {}) 
+            latitude = _safe_float(pos.get("lat"), default=CHARLOTTE_LAT)
+            longitude = _safe_float(pos.get("lon"), default=CHARLOTTE_LON)
+            
             recommendation = standardize_recommendation(
                 item_id=f"tomtom-{place_id}",
                 name=poi.get("name") or query.title(),
@@ -797,6 +824,8 @@ class PlannerRecommendationService:
                 api_source="tomtom",
                 description=f"{query.title()} in Charlotte. Categories: {', '.join(categories[:2])}",
                 location=location,
+                latitude=latitude,
+                longitude=longitude,
                 price=tier_text,
                 image_url=None,
                 category_label=category_label,
@@ -879,6 +908,12 @@ class PlannerRecommendationService:
 
             event_datetime = self._build_event_datetime(event)
             
+            venue_data = event.get("_embedded", {}).get("venues", [{}])[0]
+            venue_loc = venue_data.get("location", {})
+            
+            latitude = _safe_float(venue_loc.get("latitude"), default=CHARLOTTE_LAT)
+            longitude = _safe_float(venue_loc.get("longitude"), default=CHARLOTTE_LON)
+
             recommendation = standardize_recommendation(
                 item_id=f"ticketmaster-{event.get('id', '')}",
                 name=event.get("name", "Charlotte Event"),
@@ -886,6 +921,8 @@ class PlannerRecommendationService:
                 api_source="ticketmaster",
                 description=event.get("info") or event.get("pleaseNote") or "Live Charlotte event",
                 location=location,
+                latitude=latitude,
+                longitude=longitude,
                 price=price_text,
                 image_url=image_url,
                 datetime_str=event_datetime,
@@ -966,6 +1003,13 @@ class PlannerRecommendationService:
             # Estimate price (usually free or paid, not always clear in API)
             price_text = "Price varies"
             
+            # Target the address object inside the venue
+            venue_obj = event.get("venue", {})
+            venue_address = venue_obj.get("address", {})
+            
+            latitude = _safe_float(venue_address.get("latitude"), default=CHARLOTTE_LAT)
+            longitude = _safe_float(venue_address.get("longitude"), default=CHARLOTTE_LON)
+
             recommendation = standardize_recommendation(
                 item_id=f"eventbrite-{event.get('id', '')}",
                 name=name,
@@ -973,6 +1017,8 @@ class PlannerRecommendationService:
                 api_source="eventbrite",
                 description=description[:200],  # Truncate to 200 chars
                 location=location,
+                latitude=latitude,
+                longitude=longitude,
                 price=price_text,
                 image_url=image_url,
                 datetime_str=event_datetime,

@@ -21,6 +21,8 @@ class RecommendationItem(BaseModel):
     description: str
     datetime: Optional[str] = None
     location: str
+    latitude: float
+    longitude: float
     price: Optional[str] = None
     image: Optional[str] = None
     type: str

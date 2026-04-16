@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 from datetime import date
 
 from app.database import get_async_db
+from app.models.attraction import Attraction
 from app.models.itinerary import Itinerary
 from app.schemas.itinerary import ItineraryCreate, ItineraryResponse
 from app.services.planner_recommendation_service import PlannerRecommendationService
@@ -20,23 +21,46 @@ recommendation_service = PlannerRecommendationService(
 @router.post("/", response_model=ItineraryResponse)
 async def create_itinerary(itinerary: ItineraryCreate, db: AsyncSession = Depends(get_async_db)):
     """
-    Save a new generated itinerary to the database.
+    Save a new generated itinerary to the database, upserting attractions lazily.
     """
-    # 1. Package the validated frontend data into a database model
-    new_itinerary = Itinerary(
-        trip_name=itinerary.trip_name,
-        saved_activities=itinerary.saved_activities,
-        user_id=itinerary.user_id
-    )
+    saved_items = []
 
-    # 2. Add it to the database session and save it
-    db.add(new_itinerary)
-    await db.commit()
-    
-    # 3. Refresh to get the brand new ID assigned by PostgreSQL
+    async with db.begin():
+        for attraction_payload in itinerary.saved_activities.items:
+            attraction_name = attraction_payload.name.strip()
+            result = await db.execute(
+                select(Attraction).where(func.lower(Attraction.name) == attraction_name.lower())
+            )
+            attraction = result.scalars().first()
+
+            if attraction is None:
+                attraction = Attraction(
+                    name=attraction_name,
+                    latitude=attraction_payload.latitude,
+                    longitude=attraction_payload.longitude,
+                    address=attraction_payload.address,
+                    category=attraction_payload.category,
+                    rating=attraction_payload.rating,
+                    description=attraction_payload.description,
+                )
+                db.add(attraction)
+                await db.flush()
+
+            activity_record = attraction_payload.dict(exclude_none=True)
+            activity_record["attraction_id"] = attraction.id
+            saved_items.append(activity_record)
+
+        new_itinerary = Itinerary(
+            trip_name=itinerary.trip_name,
+            saved_activities={
+                "items": saved_items,
+                "saved_at": itinerary.saved_activities.saved_at,
+            },
+            user_id=itinerary.user_id,
+        )
+        db.add(new_itinerary)
+
     await db.refresh(new_itinerary)
-    
-    # 4. Return the saved trip back to the frontend
     return new_itinerary
 
 

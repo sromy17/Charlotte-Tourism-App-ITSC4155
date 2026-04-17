@@ -15,24 +15,26 @@ const MapView: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const selectedPlaces = useExperienceStore((state) => state.selectedPlaces);
   const apiKey = process.env.REACT_APP_TOMTOM_KEY?.trim();
+  const baseURL = process.env.REACT_APP_API_URL?.trim();
 
   // 1. FETCH FROM DATABASE
   useEffect(() => {
     const fetchLatestItinerary = async () => {
       const signedInUser = user || JSON.parse(localStorage.getItem('user') || '{}');
-      if (!signedInUser?.id) return;
+      if (!signedInUser?.id || !baseURL) return;
 
-      try {
-        const res = await axios.get(`http://localhost:8000/api/itineraries/latest/${signedInUser.id}`);
-        if (res.data?.saved_activities?.items) {
-          setDbPlaces(res.data.saved_activities.items);
-        }
+      
+        try {
+          const res = await axios.get(`${baseURL}/api/itineraries/latest/${signedInUser.id}`);
+          if (res.data?.saved_activities?.items) {
+            setDbPlaces(res.data.saved_activities.items);
+          }
       } catch (err) {
         console.error("Map Database Fetch Error:", err);
       }
     };
     fetchLatestItinerary();
-  }, [user]);
+  }, [user, baseURL]);
 
   // 2. COMBINE DATA & CLEAN COORDINATES
   // 2. COMBINE DATA & CLEAN COORDINATES

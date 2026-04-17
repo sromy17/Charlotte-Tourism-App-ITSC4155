@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
 const specialCharRegex = /[!@#$%^&*(),.?":{}|<>]/;
@@ -29,32 +28,32 @@ const Register: React.FC = () => {
     // TODO: call backend register API
     // For now navigate to home as if registration succeeded
     try {
-    const response = await fetch("http://127.0.0.1:8000/api/auth/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email: email,
-        password: password,
-        full_name: name
-      })
-    });
+  const baseURL = process.env.REACT_APP_API_URL;
+  const response = await fetch(`${baseURL}/api/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      full_name: name
+    })
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!response.ok) {
-      alert(data.detail || "Registration failed");
-      return;
-    }
+  if (!response.ok) {
+    alert(data.detail || "Registration failed");
+    return;
+  }
 
-    console.log("Registered:", data);
+  console.log("Registered:", data);
+  navigate('/');
+} catch (error) {
+  console.log("Error:", error);
+  alert("Something went wrong");
 
-    // redirect after success
-    navigate('/');
-  } catch (error) {
-    console.log("Error:", error);
-    alert("Something went wrong");
   }
   };
 

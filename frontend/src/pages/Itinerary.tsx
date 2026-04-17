@@ -5,6 +5,7 @@ import { useExperienceStore } from '../state/experienceStore';
 import { useAuthStore } from '../state/authStore';
 import { updateItinerary } from '../services/api';
 import RecommendationCard from '../components/RecommendationCard';
+import api from '../services/api';
 
 const Itinerary: React.FC = () => {
   const { recommendations } = useExperienceStore();
@@ -28,10 +29,10 @@ const Itinerary: React.FC = () => {
     const fetchLatest = async () => {
       if (!signedInUser?.id) return;
       try {
-        const res = await axios.get(`http://localhost:8000/api/itineraries/latest/${signedInUser.id}`);
+        const res = await api.get(`/api/itineraries/latest/${signedInUser.id}`);
         if (res.data?.id) {
-          setItineraryId(res.data.id);
-          setDbPlan(res.data.saved_activities?.items || []);
+      setItineraryId(res.data.id);
+      setDbPlan(res.data.saved_activities?.items || []);
         }
       } catch (err) {
         console.error("Fetch error:", err);

@@ -44,10 +44,12 @@ app.add_middleware(
     "http://localhost:3000", 
     "https://main.d2ol6y2ng4j2ko.amplifyapp.com"
     ], 
+    allow_origin_regex=r"https://.*\.amplifyapp\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # -------------------------
